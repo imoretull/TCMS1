@@ -1,0 +1,27 @@
+{
+  "name": "tcms",
+  "version": "1.0.0",
+  "description": "TCMS — a lightweight, modern test case management system (SQLite + Express + React).",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "postinstall": "npm --prefix client install",
+    "build": "npm --prefix client run build",
+    "seed": "node server/seed.js",
+    "start": "node server/index.js",
+    "dev": "concurrently -k -n server,client -c blue,green \"node --watch server/index.js\" \"npm --prefix client run dev\"",
+    "setup": "npm install && npm run build && npm run seed"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

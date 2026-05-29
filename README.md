@@ -1,0 +1,181 @@
+# TCMS — Test Case Management System
+
+A lightweight, modern, web-based test case management tool for small QA teams.
+Built as a pilot to replace ad-hoc Excel sheets and heavyweight tools like
+Zephyr, with a clean table-first UI, simple filtering/sorting, edit-locking,
+and a single-file database.
+
+> Stack: **React (Vite)** front end · **Express** API · **SQLite** (single
+> file) · **Email + PIN** auth. One language (JavaScript) front-to-back; runs on
+> macOS and Windows with minimal setup.
+
+---
+
+## Features
+
+- **Table-first view** of all test cases with sticky headers and clean density.
+- **Search, filter, and sort** by TC ID, title, area, status, priority,
+  assignee, and type (manual/automated).
+- **Pin to top** — flag urgent cases so they surface for the whole team.
+- **Full CRUD** with a slide-in detail/edit panel (progressive disclosure of
+  all fields — the table shows the essentials).
+- **Edit-locking / conflict detection** — optimistic locking via `updated_at`.
+  If someone changed a case while you were editing, you get a clear
+  "changed since you opened it" prompt instead of silently clobbering them.
+- **User-managed areas** — add a new area on the fly while editing.
+- **Lightweight identity** — pick your name, enter a PIN. Edits and assignees
+  are attributed to you.
+- **Audit fields** — created/updated by whom and when.
+
+Pre-seeded with **Amazon-style demo data** (Cart, Checkout, Search, Account,
+Payments) and **10 fake QA users**.
+
+---
+
+## Quick start
+
+You need **Node.js 18+** (`node --version` to check).
+
+```bash
+# 1. From the project root, install everything (root + client deps),
+#    build the React app, and seed the demo database:
+npm run setup
+
+# 2. Start the server:
+npm start
+```
+
+Then open **http://localhost:4000**.
+
+`npm run setup` is a convenience that runs `npm install`, `npm run build`, and
+`npm run seed` in sequence. To do it manually:
+
+```bash
+npm install        # installs root deps + (via postinstall) client deps
+npm run build      # builds the React app into client/dist
+npm run seed       # seeds the SQLite DB with demo data
+npm start          # serves the app on http://localhost:4000
+```
+
+### Signing in
+
+Pick any user from the dropdown and enter their PIN. Default demo users (defined
+in `.env`):
+
+| Name         | Email                | PIN  |
+| ------------ | -------------------- | ---- |
+| John Carter  | john@example.com     | 1111 |
+| Vishnu Rao   | vishnu@example.com   | 2222 |
+| Sandy Patel  | sandy@example.com    | 3333 |
+| Maria Gomez  | maria@example.com    | 4444 |
+| Wei Chen     | wei@example.com      | 5555 |
+| Aisha Khan   | aisha@example.com    | 6666 |
+| Tom Becker   | tom@example.com      | 7777 |
+| Priya Nair   | priya@example.com    | 8888 |
+| Diego Silva  | diego@example.com    | 9999 |
+| Hana Sato    | hana@example.com     | 1010 |
+
+---
+
+## Configuration
+
+Configuration lives in a `.env` file in the project root. A starter `.env` is
+included for the pilot; `.env.example` documents every option.
+
+```ini
+PORT=4000
+DATABASE_FILE=./data/tcms.db
+
+# QA users + PINs (v1 auth — plaintext, trusted internal use only).
+# Format: Name <email>:PIN, Name <email>:PIN, ...
+TCMS_USERS=John Carter <john@example.com>:1111, Vishnu Rao <vishnu@example.com>:2222
+```
+
+- **Users are the single source of truth in `.env`.** On every server start,
+  the user list is synced into the DB (added/renamed). To add or remove a user
+  or change a PIN, just edit `.env` and restart — no migration needed.
+- Removed users stay in the DB so historical attribution (who created/was
+  assigned a case) is preserved; they simply can no longer sign in.
+
+> **Security note (by design for v1):** PINs are stored in plaintext in `.env`
+> for a trusted internal network. This is **not** production-grade auth — full
+> SSO/hashed credentials are a documented future enhancement.
+
+---
+
+## Development
+
+For hot-reloading front + back end together:
+
+```bash
+npm run dev
+```
+
+This runs the Express API (with `node --watch`) on port **4000** and the Vite
+dev server on port **5173** (which proxies `/api` to the backend). Open
+**http://localhost:5173** during development.
+
+---
+
+## Data & backups
+
+- The entire database is a single SQLite file at `./data/tcms.db` (configurable
+  via `DATABASE_FILE`).
+- **Back up:** copy the `data/` folder (or just `tcms.db`). **Restore:** put the
+  file back. That's it.
+- **Reseed from scratch:** `npm run seed -- --reset` wipes test cases/areas and
+  re-inserts the demo data.
+
+---
+
+## Project layout
+
+```
+.
+├── .env                # configuration (port, db path, users + PINs)
+├── .env.example        # documented template
+├── package.json        # root scripts: setup / build / seed / start / dev
+├── server/
+│   ├── index.js        # Express app + routes
+│   ├── config.js       # env parsing (incl. TCMS_USERS)
+│   ├── db.js           # SQLite connection, schema, user sync
+│   ├── auth.js         # email+PIN verification, sessions, middleware
+│   ├── testCases.js    # CRUD + optimistic locking (the data model)
+│   ├── constants.js    # status/priority/type enums
+│   └── seed.js         # Amazon-style demo data
+└── client/             # React app (Vite)
+    └── src/
+        ├── App.jsx
+        ├── api.js
+        ├── styles.css
+        └── components/  # Login, Toolbar, TestCaseTable, TestCasePanel, badges
+```
+
+---
+
+## How concurrency / edit-locking works
+
+Multiple people can view the same case at once. When you open a case to edit,
+the app remembers its `updated_at` timestamp. On save, the server checks that
+the stored `updated_at` still matches. If someone else saved in the meantime,
+the server returns **409 Conflict** with their current version, and the UI shows
+a banner letting you load their version and re-apply your changes — so no edit is
+ever silently overwritten. SQLite handles the underlying write serialization.
+
+Pinning is a deliberately lightweight, low-conflict action and does **not** use
+optimistic locking.
+
+---
+
+## Deployment
+
+The app is container-friendly: it's a single Node process serving a static
+React bundle plus a SQLite file. To run anywhere, ensure Node 18+, set `.env`,
+run `npm run setup` once, then `npm start`. Mount/persist the `data/` directory
+to keep the database across restarts.
+
+---
+
+## License
+
+MIT — open-source ready, no proprietary dependencies.
