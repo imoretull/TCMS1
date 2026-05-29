@@ -1,4 +1,4 @@
-import db from './db.js';
+import db, { transaction } from './db.js';
 import {
   STATUSES,
   PRIORITIES,
@@ -288,6 +288,120 @@ export function setPinned(id, pinned, user) {
 export function deleteTestCase(id) {
   const info = db.prepare(`DELETE FROM test_cases WHERE id = ?`).run(id);
   return info.changes > 0;
+}
+
+/**
+ * Duplicate a test case into a brand-new one (fresh TC-ID, "(copy)" suffix on
+ * the title). All content fields are copied; pinned is reset to false so the
+ * copy doesn't unexpectedly surface at the top. Returns the new case, or null
+ * if the source doesn't exist.
+ */
+export function duplicateTestCase(id, user) {
+  const src = getTestCase(id);
+  if (!src) return null;
+  return createTestCase(
+    {
+      title: `${src.title} (copy)`,
+      area: src.area,
+      category: src.category,
+      status: src.status,
+      priority: src.priority,
+      assigneeEmail: src.assigneeEmail,
+      type: src.type,
+      testNature: src.testNature,
+      preconditions: src.preconditions,
+      testData: src.testData,
+      testSteps: src.testSteps,
+      expectedResult: src.expectedResult,
+      comments: src.comments,
+      sprint: src.sprint,
+      isNewFunctionality: src.isNewFunctionality,
+      pinned: false,
+    },
+    user
+  );
+}
+
+/**
+ * Bulk-update a set of cases with a partial patch (only the provided fields are
+ * changed; others are left untouched). Bulk actions are an explicit,
+ * deliberate operation over rows the user selected, so they intentionally
+ * BYPASS per-row optimistic locking (see db/SCHEMA.md §4). Runs in one
+ * transaction. Returns { updated }.
+ *
+ * Allowed patch fields: status, priority, assigneeEmail, area, category, sprint.
+ */
+export function bulkUpdateTestCases(ids, patch, user) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new ValidationError('No test cases selected.');
+  }
+  validateEnums(patch);
+
+  // Resolve which columns to set from the patch.
+  const sets = [];
+  const params = {};
+
+  if (patch.status !== undefined) {
+    sets.push('status = @status');
+    params.status = patch.status;
+  }
+  if (patch.priority !== undefined) {
+    sets.push('priority = @priority');
+    params.priority = patch.priority;
+  }
+  if (patch.assigneeEmail !== undefined) {
+    sets.push('assignee_email = @assignee_email');
+    params.assignee_email = patch.assigneeEmail || null;
+  }
+  if (patch.area !== undefined) {
+    const area = ensureArea(patch.area);
+    sets.push('area = @area');
+    params.area = area;
+    // If area is set in bulk, also set (or clear) the category consistently.
+    const category =
+      patch.category !== undefined ? ensureCategory(area, patch.category) : null;
+    sets.push('category = @category');
+    params.category = category;
+  } else if (patch.category !== undefined) {
+    // Category without area change: only meaningful per existing row's area,
+    // so we skip silently rather than risk orphaning. (UI sends area+category
+    // together.)
+  }
+  if (patch.sprint !== undefined) {
+    sets.push('sprint = @sprint');
+    params.sprint = ensureSprint(patch.sprint);
+  }
+
+  if (sets.length === 0) {
+    throw new ValidationError('Nothing to update — choose at least one field.');
+  }
+
+  sets.push('updated_at = @updated_at', 'updated_by = @updated_by');
+  params.updated_at = nowIso();
+  params.updated_by = user.email;
+
+  const placeholders = ids.map((_, i) => `@id${i}`).join(', ');
+  ids.forEach((id, i) => {
+    params[`id${i}`] = id;
+  });
+
+  const sql = `UPDATE test_cases SET ${sets.join(', ')} WHERE id IN (${placeholders})`;
+  const info = transaction(() => db.prepare(sql).run(params));
+  return { updated: info.changes };
+}
+
+/**
+ * Bulk-delete a set of cases in one transaction. Returns { deleted }.
+ */
+export function bulkDeleteTestCases(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new ValidationError('No test cases selected.');
+  }
+  const placeholders = ids.map(() => '?').join(', ');
+  const info = transaction(() =>
+    db.prepare(`DELETE FROM test_cases WHERE id IN (${placeholders})`).run(...ids)
+  );
+  return { deleted: info.changes };
 }
 
 export function listAreas() {

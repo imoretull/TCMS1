@@ -4,6 +4,8 @@ import Login from './components/Login.jsx';
 import TestCaseTable from './components/TestCaseTable.jsx';
 import TestCasePanel from './components/TestCasePanel.jsx';
 import Toolbar from './components/Toolbar.jsx';
+import BulkBar from './components/BulkBar.jsx';
+import BulkEditDialog from './components/BulkEditDialog.jsx';
 
 const EMPTY_FILTERS = {
   search: '',
@@ -32,6 +34,10 @@ export default function App() {
   // Panel state: { mode: 'view' | 'edit' | 'create', testCase }
   const [panel, setPanel] = useState(null);
   const [toast, setToast] = useState(null);
+
+  // Bulk selection: Set of selected test-case ids, and the bulk-edit dialog.
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
 
   // ── Bootstrap: are we already signed in? ──────────────────────────────────
   useEffect(() => {
@@ -75,6 +81,7 @@ export default function App() {
     setTestCases([]);
     setMeta(null);
     setPanel(null);
+    clearSelection();
   }
 
   // ── CRUD handlers ─────────────────────────────────────────────────────────
@@ -132,6 +139,75 @@ export default function App() {
     }
   }
 
+  async function handleDuplicate(testCase) {
+    try {
+      const copy = await api.duplicateTestCase(testCase.id);
+      setTestCases((prev) => [copy, ...prev]);
+      showToast(`Duplicated as ${copy.tcId}.`, 'success');
+      // Open the copy straight in edit mode so the user can tweak it.
+      setPanel({ mode: 'edit', testCase: copy });
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // ── Bulk selection + actions ──────────────────────────────────────────────
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelect(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // Replace the whole selection (used by the table's select-all of visible rows).
+  function setSelection(ids) {
+    setSelectedIds(new Set(ids));
+  }
+
+  async function handleBulkDelete() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    if (
+      !window.confirm(
+        `Delete ${ids.length} selected test case(s)? This cannot be undone.`
+      )
+    )
+      return;
+    try {
+      const { deleted } = await api.bulkDelete(ids);
+      const idSet = new Set(ids);
+      setTestCases((prev) => prev.filter((t) => !idSet.has(t.id)));
+      clearSelection();
+      if (panel && idSet.has(panel.testCase?.id)) setPanel(null);
+      showToast(`Deleted ${deleted} test case(s).`, 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function handleBulkUpdate(patch) {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    try {
+      const { updated } = await api.bulkUpdate(ids, patch);
+      // Refetch the affected rows simply by reloading the list (small scale).
+      const fresh = await api.listTestCases();
+      setTestCases(fresh);
+      api.meta().then(setMeta).catch(() => {});
+      setBulkEditOpen(false);
+      clearSelection();
+      showToast(`Updated ${updated} test case(s).`, 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
   if (bootstrapping) {
     return <div className="centered muted">Loading…</div>;
   }
@@ -183,8 +259,29 @@ export default function App() {
           loading={loading}
           onRowClick={(tc) => setPanel({ mode: 'view', testCase: tc })}
           onTogglePin={handleTogglePin}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+          onSetSelection={setSelection}
         />
       </main>
+
+      {selectedIds.size > 0 && (
+        <BulkBar
+          count={selectedIds.size}
+          onEdit={() => setBulkEditOpen(true)}
+          onDelete={handleBulkDelete}
+          onClear={clearSelection}
+        />
+      )}
+
+      {bulkEditOpen && (
+        <BulkEditDialog
+          count={selectedIds.size}
+          meta={meta}
+          onApply={handleBulkUpdate}
+          onClose={() => setBulkEditOpen(false)}
+        />
+      )}
 
       {panel && (
         <TestCasePanel
@@ -196,6 +293,7 @@ export default function App() {
           onSave={handleSave}
           onDelete={handleDelete}
           onTogglePin={handleTogglePin}
+          onDuplicate={handleDuplicate}
         />
       )}
 

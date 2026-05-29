@@ -30,6 +30,11 @@ and a single-file database.
 - **Pin to top** — flag urgent cases so they surface for the whole team.
 - **Full CRUD** with a slide-in detail/edit panel (progressive disclosure of
   all fields — the table shows the essentials).
+- **Duplicate** — clone an existing case into a new editable draft (fresh TC-ID,
+  "(copy)" title) to author similar cases quickly.
+- **Bulk actions** — select rows (with select-all of the filtered set) to bulk
+  **delete** or bulk **edit** (set status, priority, assignee, area/category, or
+  sprint on many cases at once).
 - **Edit-locking / conflict detection** — optimistic locking via `updated_at`.
   If someone changed a case while you were editing, you get a clear
   "changed since you opened it" prompt instead of silently clobbering them.

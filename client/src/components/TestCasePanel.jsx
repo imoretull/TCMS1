@@ -43,6 +43,7 @@ export default function TestCasePanel({
   onSave,
   onDelete,
   onTogglePin,
+  onDuplicate,
 }) {
   const { mode, testCase } = panel;
   const isCreate = mode === 'create';
@@ -195,6 +196,13 @@ export default function TestCasePanel({
                 onClick={() => setPanel({ mode: 'edit', testCase })}
               >
                 Edit
+              </button>
+              <button
+                className="btn btn-ghost"
+                onClick={() => onDuplicate(testCase)}
+                title="Create a copy of this test case"
+              >
+                ⧉ Duplicate
               </button>
               <button
                 className="btn btn-ghost"

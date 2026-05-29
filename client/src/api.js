@@ -47,4 +47,10 @@ export const api = {
   setPinned: (id, pinned) =>
     request('POST', `/api/test-cases/${id}/pin`, { pinned }),
   deleteTestCase: (id) => request('DELETE', `/api/test-cases/${id}`),
+  duplicateTestCase: (id) =>
+    request('POST', `/api/test-cases/${id}/duplicate`),
+  bulkUpdate: (ids, patch) =>
+    request('POST', '/api/test-cases/bulk/update', { ids, ...patch }),
+  bulkDelete: (ids) =>
+    request('POST', '/api/test-cases/bulk/delete', { ids }),
 };

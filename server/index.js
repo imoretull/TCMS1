@@ -19,6 +19,9 @@ import {
   updateTestCase,
   setPinned,
   deleteTestCase,
+  duplicateTestCase,
+  bulkUpdateTestCases,
+  bulkDeleteTestCases,
   listAreas,
   listCategoriesByArea,
   listSprints,
@@ -86,6 +89,33 @@ api.get('/meta', requireAuth, (req, res) => {
 
 api.get('/test-cases', requireAuth, (req, res) => {
   res.json(listTestCases());
+});
+
+// Bulk operations. Registered before the ":id" routes so "bulk" is never
+// mistaken for an id. Body: { ids: number[], ...patch }.
+api.post('/test-cases/bulk/update', requireAuth, (req, res, next) => {
+  try {
+    const { ids, ...patch } = req.body || {};
+    const result = bulkUpdateTestCases(ids, patch, req.user);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+api.post('/test-cases/bulk/delete', requireAuth, (req, res, next) => {
+  try {
+    const result = bulkDeleteTestCases(req.body?.ids);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+api.post('/test-cases/:id/duplicate', requireAuth, (req, res) => {
+  const tc = duplicateTestCase(Number(req.params.id), req.user);
+  if (!tc) return res.status(404).json({ error: 'Not found.' });
+  res.status(201).json(tc);
 });
 
 api.get('/test-cases/:id', requireAuth, (req, res) => {

@@ -286,9 +286,24 @@ body {
   background: #fff3da;
 }
 
+.col-select {
+  width: 34px;
+  text-align: center;
+}
+.col-select input {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+}
 .col-pin {
   width: 36px;
   text-align: center;
+}
+.row-selected {
+  background: #eaf1fe;
+}
+.row-selected:hover {
+  background: #dde8fd;
 }
 .col-id {
   width: 90px;
@@ -746,6 +761,126 @@ body {
 }
 .toast-info {
   background: #334155;
+}
+
+/* ── Bulk action bar ──────────────────────────────────────────────────────*/
+
+.bulk-bar {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #1f2933;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  z-index: 60;
+  animation: toast-in 0.18s ease-out;
+}
+.bulk-count {
+  font-weight: 600;
+}
+.bulk-actions {
+  display: flex;
+  gap: 8px;
+}
+.bulk-bar .btn {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: transparent;
+  color: #fff;
+}
+.bulk-bar .btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.bulk-bar .btn-danger-ghost {
+  color: #ffb4b4;
+}
+.bulk-bar .btn-danger-ghost:hover {
+  background: rgba(220, 38, 38, 0.25);
+}
+
+/* ── Modal dialog (bulk edit) ─────────────────────────────────────────────-*/
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 70;
+}
+.dialog {
+  width: min(480px, 94vw);
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.dialog-header h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.dialog-body {
+  padding: 16px 20px;
+  overflow: auto;
+}
+.dialog-hint {
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+.dialog-footer {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  background: #fbfcfd;
+}
+.bulk-field {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+.bulk-field-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.bulk-field-toggle input {
+  width: 16px;
+  height: 16px;
+}
+.bulk-field-control select,
+.bulk-field-control input {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+.bulk-field:not(.active) .bulk-field-control {
+  opacity: 0.5;
+}
+.bulk-area-row {
+  display: flex;
+  gap: 8px;
 }
 
 @media (max-width: 720px) {

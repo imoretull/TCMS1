@@ -99,11 +99,33 @@ export default function TestCaseTable({
   loading,
   onRowClick,
   onTogglePin,
+  selectedIds,
+  onToggleSelect,
+  onSetSelection,
 }) {
   const rows = useMemo(() => {
     const filtered = applyFilters(testCases, filters, meta);
     return applySort(filtered, sort, meta);
   }, [testCases, filters, sort, meta]);
+
+  // Select-all operates on the currently-visible (filtered) rows.
+  const visibleIds = rows.map((r) => r.id);
+  const selectedVisible = visibleIds.filter((id) => selectedIds.has(id)).length;
+  const allVisibleSelected =
+    visibleIds.length > 0 && selectedVisible === visibleIds.length;
+  const someVisibleSelected =
+    selectedVisible > 0 && selectedVisible < visibleIds.length;
+
+  function toggleSelectAll() {
+    if (allVisibleSelected) {
+      // Deselect the visible rows, keep any selection outside the filter.
+      const visible = new Set(visibleIds);
+      onSetSelection([...selectedIds].filter((id) => !visible.has(id)));
+    } else {
+      // Add all visible rows to the selection.
+      onSetSelection([...new Set([...selectedIds, ...visibleIds])]);
+    }
+  }
 
   if (loading) {
     return <div className="table-empty muted">Loading test cases…</div>;
@@ -122,6 +144,17 @@ export default function TestCaseTable({
       <table className="tc-table">
         <thead>
           <tr>
+            <th className="col-select">
+              <input
+                type="checkbox"
+                checked={allVisibleSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = someVisibleSelected;
+                }}
+                onChange={toggleSelectAll}
+                title="Select all (filtered)"
+              />
+            </th>
             <th className="col-pin" title="Pinned"></th>
             <SortHeader label="TC ID" sortKey="tcId" sort={sort} setSort={setSort} className="col-id" />
             <SortHeader label="Title" sortKey="title" sort={sort} setSort={setSort} className="col-title" />
@@ -138,9 +171,18 @@ export default function TestCaseTable({
           {rows.map((t) => (
             <tr
               key={t.id}
-              className={t.pinned ? 'row-pinned' : ''}
+              className={`${t.pinned ? 'row-pinned' : ''} ${
+                selectedIds.has(t.id) ? 'row-selected' : ''
+              }`}
               onClick={() => onRowClick(t)}
             >
+              <td className="col-select" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(t.id)}
+                  onChange={() => onToggleSelect(t.id)}
+                />
+              </td>
               <td className="col-pin">
                 <button
                   className={`pin-btn ${t.pinned ? 'pinned' : ''}`}

@@ -182,6 +182,15 @@ overwriting another, an update **must**:
 Also on update: re-validate enums (§2), keep `created_at`/`created_by`
 unchanged, and auto-create a referenced new `area` as in step 5 above.
 
+### Bulk operations (no per-row lock)
+
+Bulk update / bulk delete act on a set of ids the user explicitly selected. They
+are a deliberate, batch action and intentionally **bypass** the per-row
+optimistic-lock check — applying best-effort to all selected rows and reporting
+how many were affected. Bulk update still bumps `updated_at`/`updated_by` and
+only writes the fields provided in the patch; bulk-setting an `area` also sets
+the `category` consistently (clearing it if none is given).
+
 ### Pinning (lightweight, no lock)
 
 Toggling `pinned` is a deliberately low-conflict, team-awareness action and is
