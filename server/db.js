@@ -56,6 +56,11 @@ function addMissingColumns() {
       'test_nature',
       `ALTER TABLE test_cases ADD COLUMN test_nature TEXT NOT NULL DEFAULT 'Positive'`,
     ],
+    [
+      'is_new_functionality',
+      `ALTER TABLE test_cases ADD COLUMN is_new_functionality INTEGER NOT NULL DEFAULT 0`,
+    ],
+    ['sprint', `ALTER TABLE test_cases ADD COLUMN sprint TEXT`],
   ];
   for (const [name, sql] of additions) {
     if (!cols.has(name)) db.exec(sql);

@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS schema_meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '2');
+INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '3');
 
 -- ── QA users ───────────────────────────────────────────────────────────────
 -- The authoritative user list is defined in the application's .env
@@ -61,6 +61,14 @@ CREATE TABLE IF NOT EXISTS categories (
   area TEXT NOT NULL,   -- parent area (references areas.name, soft)
   name TEXT NOT NULL,   -- category name within that area
   PRIMARY KEY (area, name)
+);
+
+-- ── Sprints ─────────────────────────────────────────────────────────────────
+-- Optional, user-managed sprint tags (e.g. 'S21', 'S22', 'S23'). The
+-- application registers a new sprint on the fly when a test case references one,
+-- so the filter can offer known sprint values.
+CREATE TABLE IF NOT EXISTS sprints (
+  name TEXT PRIMARY KEY
 );
 
 -- ── Counters ────────────────────────────────────────────────────────────────
@@ -105,6 +113,10 @@ CREATE TABLE IF NOT EXISTS test_cases (
 
   pinned           INTEGER NOT NULL DEFAULT 0,         -- 0 = false, 1 = true
 
+  -- Optional tags for filtering.
+  is_new_functionality INTEGER NOT NULL DEFAULT 0,     -- 0/1: covers newly built functionality
+  sprint           TEXT,                               -- e.g. 'S23'; references sprints.name (soft)
+
   -- Audit + concurrency control. Timestamps are ISO-8601 UTC strings, e.g.
   -- '2026-05-29T15:07:39.455Z'. updated_at drives optimistic edit-locking:
   -- an updating app must verify the updated_at it last read still matches
@@ -121,3 +133,4 @@ CREATE INDEX IF NOT EXISTS idx_tc_category ON test_cases(category);
 CREATE INDEX IF NOT EXISTS idx_tc_status   ON test_cases(status);
 CREATE INDEX IF NOT EXISTS idx_tc_priority ON test_cases(priority);
 CREATE INDEX IF NOT EXISTS idx_tc_assignee ON test_cases(assignee_email);
+CREATE INDEX IF NOT EXISTS idx_tc_sprint   ON test_cases(sprint);

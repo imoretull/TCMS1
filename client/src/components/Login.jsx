@@ -35,10 +35,10 @@ export default function Login({ onLoggedIn }) {
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
         <div className="login-brand">
-          <span className="brand-mark">✓</span>
-          <h1>TCMS</h1>
+          <span className="brand-mark">a</span>
+          <h1>Amazon</h1>
         </div>
-        <p className="login-sub">Sign in to manage your test cases</p>
+        <p className="login-sub">Test Case Management — sign in to continue</p>
 
         <label className="field">
           <span>Who are you?</span>

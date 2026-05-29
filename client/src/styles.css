@@ -144,13 +144,14 @@ body {
 .brand-mark {
   display: inline-grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  background: var(--primary);
-  color: #fff;
+  width: 26px;
+  height: 26px;
+  /* Amazon-style demo mark */
+  background: #232f3e;
+  color: #ff9900;
   border-radius: 6px;
-  font-weight: 700;
-  font-size: 14px;
+  font-weight: 800;
+  font-size: 16px;
   align-self: center;
 }
 .brand-name {
@@ -303,6 +304,9 @@ body {
 .col-nature {
   width: 110px;
 }
+.col-sprint {
+  width: 80px;
+}
 .col-assignee {
   width: 130px;
 }
@@ -350,6 +354,28 @@ body {
 .category-tag::before {
   content: '↳ ';
   color: #b6bec9;
+}
+.sprint-tag {
+  display: inline-block;
+  background: #ede9fe;
+  color: #6d28d9;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+.new-chip {
+  display: inline-block;
+  background: #16a34a;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+  vertical-align: middle;
 }
 
 .table-empty {

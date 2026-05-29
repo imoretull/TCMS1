@@ -21,6 +21,7 @@ import {
   deleteTestCase,
   listAreas,
   listCategoriesByArea,
+  listSprints,
   listUsers,
   ConflictError,
   ValidationError,
@@ -76,6 +77,7 @@ api.get('/meta', requireAuth, (req, res) => {
     testNatures: TEST_NATURES,
     areas: listAreas(),
     categoriesByArea: listCategoriesByArea(),
+    sprints: listSprints(),
     users: listUsers(),
   });
 });

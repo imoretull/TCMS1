@@ -24,6 +24,9 @@ and a single-file database.
 - **Positive / Negative** — mark each case's test nature (verifying correct
   behavior vs. graceful handling of invalid input), shown as a badge and
   filterable.
+- **Optional tags: Sprint & New functionality** — tag a case with a sprint
+  (e.g. `S23`, remembered for the filter dropdown) and/or flag it as "new
+  functionality". Both are optional and have their own filters.
 - **Pin to top** — flag urgent cases so they surface for the whole team.
 - **Full CRUD** with a slide-in detail/edit panel (progressive disclosure of
   all fields — the table shows the essentials).

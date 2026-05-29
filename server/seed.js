@@ -13,8 +13,10 @@ import { listUsers } from './testCases.js';
 const RESET = process.argv.includes('--reset');
 
 if (RESET) {
-  console.log('Resetting test cases, areas, and categories...');
-  db.exec(`DELETE FROM test_cases; DELETE FROM areas; DELETE FROM categories;`);
+  console.log('Resetting test cases, areas, categories, and sprints...');
+  db.exec(
+    `DELETE FROM test_cases; DELETE FROM areas; DELETE FROM categories; DELETE FROM sprints;`
+  );
   db.prepare(`UPDATE counters SET value = 1000 WHERE name = 'tc_id'`).run();
 }
 
@@ -604,12 +606,25 @@ const cases = [
   },
 ];
 
+// Spread cases across a few sprints, and flag some as new functionality, so the
+// optional Sprint and "New functionality" tag filters have meaningful demo data.
+// Deterministic by index (no randomness) so reseeds are reproducible.
+const SPRINTS = ['S21', 'S22', 'S23'];
+
 let created = 0;
 transaction(() => {
-  for (const c of cases) {
-    createTestCase({ ...c, assigneeEmail: nextAssignee() }, author);
+  cases.forEach((c, i) => {
+    // Default tag derivation; explicit values on a case still win.
+    const sprint = c.sprint ?? SPRINTS[i % SPRINTS.length];
+    // Mark the most recent sprint's work, plus any negative case, as "new".
+    const isNewFunctionality =
+      c.isNewFunctionality ?? (sprint === 'S23' || c.testNature === 'Negative');
+    createTestCase(
+      { ...c, sprint, isNewFunctionality, assigneeEmail: nextAssignee() },
+      author
+    );
     created++;
-  }
+  });
 });
 
 const areaCount = db.prepare(`SELECT COUNT(*) n FROM areas`).get().n;
@@ -617,9 +632,18 @@ const catCount = db.prepare(`SELECT COUNT(*) n FROM categories`).get().n;
 const negCount = db
   .prepare(`SELECT COUNT(*) n FROM test_cases WHERE test_nature = 'Negative'`)
   .get().n;
+const newCount = db
+  .prepare(`SELECT COUNT(*) n FROM test_cases WHERE is_new_functionality = 1`)
+  .get().n;
+const sprintList = db
+  .prepare(`SELECT name FROM sprints ORDER BY name`)
+  .all()
+  .map((r) => r.name)
+  .join(', ');
 console.log(
   `Seeded ${created} test cases across ${areaCount} areas and ${catCount} categories ` +
     `(${negCount} negative, ${created - negCount} positive).`
 );
+console.log(`New-functionality cases: ${newCount}. Sprints: ${sprintList}.`);
 console.log(`Users available for sign-in: ${users.length}`);
 process.exit(0);

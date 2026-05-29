@@ -1,6 +1,6 @@
 # TCMS Database Contract
 
-**Schema version: 2**
+**Schema version: 3**
 
 This document is the **contract** for the TCMS database. The TCMS web app is the
 *reference implementation* of these rules, but the database file is standalone:
@@ -43,6 +43,7 @@ See [`schema.sql`](./schema.sql) for exact column types and defaults. Summary:
 | `users`       | QA users (`email` PK, `name`). Identity for attribution/assignment. |
 | `areas`       | User-managed functional areas (`name` PK).                          |
 | `categories`  | Sub-groups within an area; PK `(area, name)` — see §2.1.            |
+| `sprints`     | Optional user-managed sprint tags (`name` PK), e.g. `S23`.          |
 | `counters`    | Sequence backing the public TC-ID (`name` PK, `value`).             |
 | `test_cases`  | The core entity. One row per test case.                             |
 
@@ -55,6 +56,7 @@ area, or category being removed.
 - `test_cases.assignee_email`, `created_by`, `updated_by` → `users.email`
 - `test_cases.area` → `areas.name`
 - `(test_cases.area, test_cases.category)` → `categories.(area, name)`
+- `test_cases.sprint` → `sprints.name`
 
 Writers should keep these consistent (see §4).
 
@@ -73,8 +75,17 @@ update this contract (and bump the schema version if other apps must know).
 | `test_cases.type`        | `Manual`, `Automated`                                 | `Manual`    |
 | `test_cases.test_nature` | `Positive`, `Negative`                                | `Positive`  |
 | `test_cases.pinned`      | `0` (false) or `1` (true)                             | `0`         |
+| `test_cases.is_new_functionality` | `0` (false) or `1` (true)                    | `0`         |
 
 `title` must be a non-empty (non-whitespace) string.
+
+**`is_new_functionality`** is an optional tag flag: `1` marks a test case that
+covers newly built functionality (vs. existing/regression coverage). It is used
+purely for filtering.
+
+**`sprint`** (column on `test_cases`) is an optional free-text tag, e.g. `S23`.
+Known sprint values are tracked in the `sprints` table so the UI can offer them
+in a filter dropdown (§4, §6). May be `NULL`/empty when untagged.
 
 **`test_nature`** distinguishes the intent of a test:
 
@@ -136,7 +147,9 @@ A compliant `INSERT` must:
    `INSERT OR IGNORE INTO categories (area, name) VALUES (?, ?)`. (Only register
    a category when an area is present — a category without an area is invalid.)
 6. Apply defaults (§2) for any omitted enum/`pinned` fields (`test_nature`
-   defaults to `Positive`).
+   defaults to `Positive`, `is_new_functionality` defaults to `0`).
+7. If `sprint` is non-empty, register it:
+   `INSERT OR IGNORE INTO sprints (name) VALUES (?)`.
 
 ### Updating a test case — **optimistic edit-locking (required)**
 
@@ -207,6 +220,8 @@ A plain `DELETE FROM test_cases WHERE id = ?`. No soft-delete in v1.
 - **Categories** are sub-groups of an area (§2.1), also created on demand and
   stored as `(area, name)` pairs. When offering category choices for a given
   area, query `SELECT name FROM categories WHERE area = ?`.
+- **Sprints** are optional free-text tags created on demand and tracked in the
+  `sprints` table for the filter dropdown: `SELECT name FROM sprints`.
 
 ---
 
@@ -230,7 +245,7 @@ A plain `DELETE FROM test_cases WHERE id = ?`. No soft-delete in v1.
 
 ## 8. Versioning
 
-`schema_meta.schema_version` is currently **`2`**. Before reading/writing, an
+`schema_meta.schema_version` is currently **`3`**. Before reading/writing, an
 app may check it:
 
 ```sql
@@ -242,6 +257,11 @@ would break apps written against an older version.
 
 ### Changelog
 
+- **v3** — Added the `sprints` table and two optional tag columns on
+  `test_cases`: `is_new_functionality` (0/1) and `sprint` (free text, e.g.
+  `S23`). Both are nullable/defaulted, so older readers still work; the
+  reference app auto-migrates an older file by adding the columns/table on
+  startup.
 - **v2** — Added the `categories` table and `test_cases.category` (Area →
   Category hierarchy, §2.1) and `test_cases.test_nature` (Positive / Negative).
   Both new columns are nullable/defaulted, so a v1 reader still works on a v2

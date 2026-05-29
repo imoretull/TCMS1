@@ -14,6 +14,8 @@ const EMPTY_FILTERS = {
   assignee: '',
   type: '',
   testNature: '',
+  sprint: '',
+  newFunctionality: '', // '', 'yes', or 'no'
 };
 
 export default function App() {
@@ -148,8 +150,8 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="brand">
-          <span className="brand-mark">✓</span>
-          <span className="brand-name">TCMS</span>
+          <span className="brand-mark">a</span>
+          <span className="brand-name">Amazon</span>
           <span className="brand-sub">Test Case Management</span>
         </div>
         <div className="header-right">

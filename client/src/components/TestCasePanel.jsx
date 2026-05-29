@@ -16,6 +16,8 @@ const BLANK = {
   expectedResult: '',
   comments: '',
   pinned: false,
+  isNewFunctionality: false,
+  sprint: '',
 };
 
 function userName(meta, email) {
@@ -90,6 +92,8 @@ export default function TestCasePanel({
       expectedResult: form.expectedResult,
       comments: form.comments,
       pinned: form.pinned,
+      isNewFunctionality: form.isNewFunctionality,
+      sprint: form.sprint,
     };
     if (!isCreate) payload.updatedAt = testCase.updatedAt;
 
@@ -231,6 +235,16 @@ function ViewBody({ testCase, meta }) {
         <Meta label="Type"><TypeBadge type={t.type} /></Meta>
         <Meta label="Nature"><NatureBadge nature={t.testNature} /></Meta>
         <Meta label="Assignee">{userName(meta, t.assigneeEmail)}</Meta>
+        <Meta label="Sprint">
+          {t.sprint ? <span className="sprint-tag">{t.sprint}</span> : '—'}
+        </Meta>
+        <Meta label="New functionality">
+          {t.isNewFunctionality ? (
+            <span className="new-chip">NEW</span>
+          ) : (
+            'No'
+          )}
+        </Meta>
         <Meta label="Pinned">{t.pinned ? '★ Yes' : 'No'}</Meta>
       </div>
 
@@ -461,6 +475,33 @@ function EditForm({
           </select>
         </label>
       </div>
+
+      <div className="field-row">
+        <label className="field">
+          <span>Sprint (optional)</span>
+          <input
+            type="text"
+            list="sprint-options"
+            value={form.sprint || ''}
+            onChange={set('sprint')}
+            placeholder="e.g. S23"
+          />
+          <datalist id="sprint-options">
+            {meta?.sprints?.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        </label>
+      </div>
+
+      <label className="checkbox-field">
+        <input
+          type="checkbox"
+          checked={!!form.isNewFunctionality}
+          onChange={set('isNewFunctionality')}
+        />
+        <span>Tag as “New functionality”</span>
+      </label>
 
       <label className="checkbox-field">
         <input type="checkbox" checked={!!form.pinned} onChange={set('pinned')} />

@@ -20,9 +20,12 @@ function applyFilters(testCases, filters, meta) {
     if (filters.assignee && t.assigneeEmail !== filters.assignee) return false;
     if (filters.type && t.type !== filters.type) return false;
     if (filters.testNature && t.testNature !== filters.testNature) return false;
+    if (filters.sprint && t.sprint !== filters.sprint) return false;
+    if (filters.newFunctionality === 'yes' && !t.isNewFunctionality) return false;
+    if (filters.newFunctionality === 'no' && t.isNewFunctionality) return false;
     if (q) {
       const assignee = userName(meta, t.assigneeEmail).toLowerCase();
-      const haystack = [t.tcId, t.title, t.area, t.category, assignee]
+      const haystack = [t.tcId, t.title, t.area, t.category, t.sprint, assignee]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -127,6 +130,7 @@ export default function TestCaseTable({
             <SortHeader label="Priority" sortKey="priority" sort={sort} setSort={setSort} className="col-priority" />
             <SortHeader label="Type" sortKey="type" sort={sort} setSort={setSort} className="col-type" />
             <SortHeader label="Nature" sortKey="testNature" sort={sort} setSort={setSort} className="col-nature" />
+            <SortHeader label="Sprint" sortKey="sprint" sort={sort} setSort={setSort} className="col-sprint" />
             <SortHeader label="Assignee" sortKey="assignee" sort={sort} setSort={setSort} className="col-assignee" />
           </tr>
         </thead>
@@ -150,7 +154,14 @@ export default function TestCaseTable({
                 </button>
               </td>
               <td className="col-id mono">{t.tcId}</td>
-              <td className="col-title">{t.title}</td>
+              <td className="col-title">
+                {t.isNewFunctionality && (
+                  <span className="new-chip" title="New functionality">
+                    NEW
+                  </span>
+                )}
+                {t.title}
+              </td>
               <td className="col-area">
                 {t.area ? (
                   <span className="area-cell">
@@ -174,6 +185,9 @@ export default function TestCaseTable({
               </td>
               <td className="col-nature">
                 <NatureBadge nature={t.testNature} />
+              </td>
+              <td className="col-sprint">
+                {t.sprint ? <span className="sprint-tag">{t.sprint}</span> : '—'}
               </td>
               <td className="col-assignee">{userName(meta, t.assigneeEmail)}</td>
             </tr>

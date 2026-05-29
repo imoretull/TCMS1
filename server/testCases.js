@@ -51,6 +51,8 @@ function rowToApi(row) {
     expectedResult: row.expected_result,
     comments: row.comments,
     pinned: !!row.pinned,
+    isNewFunctionality: !!row.is_new_functionality,
+    sprint: row.sprint,
     createdAt: row.created_at,
     createdBy: row.created_by,
     updatedAt: row.updated_at,
@@ -87,6 +89,14 @@ function ensureCategory(area, category) {
     `INSERT OR IGNORE INTO categories (area, name) VALUES (?, ?)`
   ).run(trimmedArea, trimmedCat);
   return trimmedCat;
+}
+
+/** Register an optional sprint tag so the filter can offer known values. */
+function ensureSprint(sprint) {
+  const trimmed = (sprint || '').trim();
+  if (!trimmed) return null;
+  db.prepare(`INSERT OR IGNORE INTO sprints (name) VALUES (?)`).run(trimmed);
+  return trimmed;
 }
 
 function validateEnums({ status, priority, type, testNature }) {
@@ -129,6 +139,7 @@ export function createTestCase(input, user) {
   const now = nowIso();
   const area = ensureArea(input.area);
   const category = ensureCategory(area, input.category);
+  const sprint = ensureSprint(input.sprint);
   const tcId = nextTcId();
 
   const info = db
@@ -136,10 +147,12 @@ export function createTestCase(input, user) {
       `INSERT INTO test_cases (
         tc_id, title, area, category, status, priority, assignee_email, type, test_nature,
         preconditions, test_data, test_steps, expected_result, comments, pinned,
+        is_new_functionality, sprint,
         created_at, created_by, updated_at, updated_by
       ) VALUES (
         @tc_id, @title, @area, @category, @status, @priority, @assignee_email, @type, @test_nature,
         @preconditions, @test_data, @test_steps, @expected_result, @comments, @pinned,
+        @is_new_functionality, @sprint,
         @created_at, @created_by, @updated_at, @updated_by
       )`
     )
@@ -153,6 +166,8 @@ export function createTestCase(input, user) {
       assignee_email: input.assigneeEmail || null,
       type: input.type || DEFAULT_TYPE,
       test_nature: input.testNature || DEFAULT_TEST_NATURE,
+      is_new_functionality: input.isNewFunctionality ? 1 : 0,
+      sprint,
       preconditions: input.preconditions || '',
       test_data: input.testData || '',
       test_steps: input.testSteps || '',
@@ -224,6 +239,16 @@ export function updateTestCase(id, input, user) {
     comments: input.comments ?? existing.comments,
     pinned:
       input.pinned !== undefined ? (input.pinned ? 1 : 0) : existing.pinned,
+    is_new_functionality:
+      input.isNewFunctionality !== undefined
+        ? input.isNewFunctionality
+          ? 1
+          : 0
+        : existing.is_new_functionality,
+    sprint:
+      input.sprint !== undefined
+        ? ensureSprint(input.sprint)
+        : existing.sprint,
     updated_at: now,
     updated_by: user.email,
     id,
@@ -237,6 +262,7 @@ export function updateTestCase(id, input, user) {
       preconditions = @preconditions, test_data = @test_data,
       test_steps = @test_steps, expected_result = @expected_result,
       comments = @comments, pinned = @pinned,
+      is_new_functionality = @is_new_functionality, sprint = @sprint,
       updated_at = @updated_at, updated_by = @updated_by
     WHERE id = @id`
   ).run(next);
@@ -287,6 +313,14 @@ export function listCategoriesByArea() {
     (byArea[area] ||= []).push(name);
   }
   return byArea;
+}
+
+/** Known sprint tags, for the filter dropdown. */
+export function listSprints() {
+  return db
+    .prepare(`SELECT name FROM sprints ORDER BY name COLLATE NOCASE`)
+    .all()
+    .map((r) => r.name);
 }
 
 export function listUsers() {

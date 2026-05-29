@@ -112,6 +112,25 @@ export default function Toolbar({
           ))}
         </select>
 
+        <select value={filters.sprint} onChange={set('sprint')} className="filter">
+          <option value="">All sprints</option>
+          {meta?.sprints?.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.newFunctionality}
+          onChange={set('newFunctionality')}
+          className="filter"
+        >
+          <option value="">New &amp; existing</option>
+          <option value="yes">New functionality</option>
+          <option value="no">Existing only</option>
+        </select>
+
         {hasActiveFilters && (
           <button className="btn btn-ghost" onClick={onClear}>
             Clear
