@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
-import { StatusBadge, PriorityBadge, TypeBadge, NatureBadge } from './badges.jsx';
+import { TypeBadge, NatureBadge, LevelBadge } from './badges.jsx';
 
 const BLANK = {
   title: '',
   area: '',
   category: '',
-  status: 'Skipped',
-  priority: 'Medium',
-  assigneeEmail: '',
-  type: 'Manual',
+  type: 'Manual', // Execution
   testNature: 'Positive',
+  testLevel: 'Regression',
   preconditions: '',
   testData: '',
   testSteps: '',
@@ -82,11 +80,9 @@ export default function TestCasePanel({
       title: form.title,
       area: form.area,
       category: form.category,
-      status: form.status,
-      priority: form.priority,
-      assigneeEmail: form.assigneeEmail,
       type: form.type,
       testNature: form.testNature,
+      testLevel: form.testLevel,
       preconditions: form.preconditions,
       testData: form.testData,
       testSteps: form.testSteps,
@@ -236,13 +232,11 @@ function ViewBody({ testCase, meta }) {
       <div className="meta-grid">
         <Meta label="Area">{t.area ? <span className="area-tag">{t.area}</span> : '—'}</Meta>
         <Meta label="Category">
-          {t.category ? <span className="category-tag">{t.category}</span> : '—'}
+          {t.category ? <span className="category-tag plain">{t.category}</span> : '—'}
         </Meta>
-        <Meta label="Status"><StatusBadge status={t.status} /></Meta>
-        <Meta label="Priority"><PriorityBadge priority={t.priority} /></Meta>
-        <Meta label="Type"><TypeBadge type={t.type} /></Meta>
+        <Meta label="Type"><LevelBadge level={t.testLevel} /></Meta>
+        <Meta label="Execution"><TypeBadge type={t.type} /></Meta>
         <Meta label="Nature"><NatureBadge nature={t.testNature} /></Meta>
-        <Meta label="Assignee">{userName(meta, t.assigneeEmail)}</Meta>
         <Meta label="Sprint">
           {t.sprint ? <span className="sprint-tag">{t.sprint}</span> : '—'}
         </Meta>
@@ -426,12 +420,22 @@ function EditForm({
 
       <div className="field-row">
         <label className="field">
-          <span>Assignee</span>
-          <select value={form.assigneeEmail || ''} onChange={set('assigneeEmail')}>
-            <option value="">— Unassigned —</option>
-            {meta?.users?.map((u) => (
-              <option key={u.email} value={u.email}>
-                {u.name}
+          <span>Type</span>
+          <select value={form.testLevel} onChange={set('testLevel')}>
+            {meta?.testLevels?.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="field">
+          <span>Execution</span>
+          <select value={form.type} onChange={set('type')}>
+            {meta?.types?.map((t) => (
+              <option key={t} value={t}>
+                {t}
               </option>
             ))}
           </select>
@@ -443,41 +447,6 @@ function EditForm({
             {meta?.testNatures?.map((n) => (
               <option key={n} value={n}>
                 {n}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="field-row">
-        <label className="field">
-          <span>Status</span>
-          <select value={form.status} onChange={set('status')}>
-            {meta?.statuses?.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="field">
-          <span>Priority</span>
-          <select value={form.priority} onChange={set('priority')}>
-            {meta?.priorities?.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="field">
-          <span>Type</span>
-          <select value={form.type} onChange={set('type')}>
-            {meta?.types?.map((t) => (
-              <option key={t} value={t}>
-                {t}
               </option>
             ))}
           </select>

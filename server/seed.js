@@ -63,32 +63,34 @@ if (users.length === 0) {
   process.exit(1);
 }
 
-// Round-robin assignee picker for even distribution.
-let assigneeIdx = 0;
-const nextAssignee = () => users[assigneeIdx++ % users.length].email;
-
 // We pass a "system" user as the author of seed data, attributed to the
 // first configured user so audit fields are populated sensibly.
 const author = { email: users[0].email, name: users[0].name };
 
 
-// Spread cases across a few sprints, and flag some as new functionality, so the
-// optional Sprint and "New functionality" tag filters have meaningful demo data.
-// Deterministic by index (no randomness) so reseeds are reproducible.
+// Spread cases across a few sprints, flag some as new functionality, and assign
+// a test level, so the optional tag filters have meaningful demo data.
+// Deterministic (no randomness) so reseeds are reproducible.
 const SPRINTS = ['S21', 'S22', 'S23'];
+
+// Derive a sensible test level (Sanity ⊆ Smoke ⊆ Regression):
+//   pinned core-path cases -> Sanity, other positive happy-paths -> Smoke,
+//   negative / edge cases  -> Regression.
+function deriveLevel(c) {
+  if (c.pinned) return 'Sanity';
+  if (c.testNature === 'Negative') return 'Regression';
+  return 'Smoke';
+}
 
 let created = 0;
 transaction(() => {
   cases.forEach((c, i) => {
     // Default tag derivation; explicit values on a case still win.
     const sprint = c.sprint ?? SPRINTS[i % SPRINTS.length];
-    // Mark the most recent sprint's work, plus any negative case, as "new".
     const isNewFunctionality =
       c.isNewFunctionality ?? (sprint === 'S23' || c.testNature === 'Negative');
-    createTestCase(
-      { ...c, sprint, isNewFunctionality, assigneeEmail: nextAssignee() },
-      author
-    );
+    const testLevel = c.testLevel ?? deriveLevel(c);
+    createTestCase({ ...c, sprint, isNewFunctionality, testLevel }, author);
     created++;
   });
 });
@@ -110,6 +112,14 @@ console.log(
   `Seeded ${created} test cases across ${areaCount} areas and ${catCount} categories ` +
     `(${negCount} negative, ${created - negCount} positive).`
 );
+const levelList = db
+  .prepare(
+    `SELECT test_level, COUNT(*) n FROM test_cases GROUP BY test_level ORDER BY test_level`
+  )
+  .all()
+  .map((r) => `${r.test_level}:${r.n}`)
+  .join(', ');
 console.log(`New-functionality cases: ${newCount}. Sprints: ${sprintList}.`);
+console.log(`Test levels — ${levelList}.`);
 console.log(`Users available for sign-in: ${users.length}`);
 process.exit(0);

@@ -345,6 +345,12 @@ body {
 .col-area {
   width: 110px;
 }
+.col-category {
+  width: 130px;
+}
+.col-level {
+  width: 110px;
+}
 .col-status,
 .col-priority,
 .col-type {
@@ -404,6 +410,19 @@ body {
   content: '↳ ';
   color: #b6bec9;
 }
+/* In its own column, show the category as a plain chip (no ↳ prefix). */
+.category-tag.plain {
+  background: #eef2f7;
+  color: #475569;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  padding-left: 8px;
+}
+.category-tag.plain::before {
+  content: '';
+}
 .sprint-tag {
   display: inline-block;
   background: #ede9fe;
@@ -446,45 +465,6 @@ body {
   font-weight: 600;
   border: 1px solid transparent;
 }
-.status-badge[data-status='Passed'] {
-  background: #e7f6ec;
-  color: #1a7f37;
-}
-.status-badge[data-status='Failed'] {
-  background: #fdeaea;
-  color: #c62828;
-}
-.status-badge[data-status='Skipped'] {
-  background: #eef1f4;
-  color: #5b6573;
-}
-.status-badge[data-status='Deferred'] {
-  background: #fef6e7;
-  color: #a16207;
-}
-.status-badge[data-status='Blocked'] {
-  background: #f3e8fd;
-  color: #7e22ce;
-}
-
-.priority-badge[data-priority='Critical'] {
-  background: #fde2e1;
-  color: #b91c1c;
-  border-color: #f5b5b2;
-}
-.priority-badge[data-priority='High'] {
-  background: #fff0e2;
-  color: #c2410c;
-}
-.priority-badge[data-priority='Medium'] {
-  background: #fef9e7;
-  color: #a16207;
-}
-.priority-badge[data-priority='Low'] {
-  background: #eef1f4;
-  color: #5b6573;
-}
-
 .type-badge[data-type='Automated'] {
   background: #e6f1fe;
   color: #1d4ed8;
@@ -501,6 +481,20 @@ body {
 .nature-badge[data-nature='Negative'] {
   background: #fdeaea;
   color: #c62828;
+}
+
+/* Test level (Sanity ⊆ Smoke ⊆ Regression) — warm→cool by breadth. */
+.level-badge[data-level='Sanity'] {
+  background: #e7f6ec;
+  color: #1a7f37;
+}
+.level-badge[data-level='Smoke'] {
+  background: #e6f1fe;
+  color: #1d4ed8;
+}
+.level-badge[data-level='Regression'] {
+  background: #f3e8fd;
+  color: #7e22ce;
 }
 
 /* ── Login ────────────────────────────────────────────────────────────────*/

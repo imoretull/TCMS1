@@ -14,9 +14,12 @@ and a single-file database.
 ## Features
 
 - **Table-first view** of all test cases with sticky headers and clean density.
-- **Search, filter, and sort** by TC ID, title, area, category, status,
-  priority, assignee, type (manual/automated), and test nature
-  (positive/negative).
+- **Test-case repository** (TestRail-style): stores what a test *is*, not
+  execution results. Pass/fail status, assignee, and run-time priority are
+  intentionally **not** here — they belong to a future **Test Runs** feature.
+- **Search, filter, and sort** by TC ID, title, area, category, type
+  (Sanity/Smoke/Regression — nested, inclusive), execution (manual/automated),
+  test nature (positive/negative), and sprint.
 - **Area → Category hierarchy** — group cases by a broad area (e.g. Checkout)
   and a sub-category within it (e.g. Discount). Both are user-managed: add a new
   area or category on the fly while editing; category choices are scoped to the

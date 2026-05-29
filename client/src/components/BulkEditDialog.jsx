@@ -7,16 +7,16 @@ import { useState } from 'react';
  */
 export default function BulkEditDialog({ count, meta, onApply, onClose }) {
   const [enabled, setEnabled] = useState({
-    status: false,
-    priority: false,
-    assignee: false,
+    testLevel: false,
+    type: false,
+    testNature: false,
     area: false,
     sprint: false,
   });
   const [values, setValues] = useState({
-    status: meta?.statuses?.[0] || '',
-    priority: meta?.priorities?.[0] || '',
-    assigneeEmail: '',
+    testLevel: meta?.testLevels?.[0] || 'Regression',
+    type: meta?.types?.[0] || 'Manual',
+    testNature: meta?.testNatures?.[0] || 'Positive',
     area: '',
     category: '',
     sprint: '',
@@ -33,9 +33,9 @@ export default function BulkEditDialog({ count, meta, onApply, onClose }) {
 
   function apply() {
     const patch = {};
-    if (enabled.status) patch.status = values.status;
-    if (enabled.priority) patch.priority = values.priority;
-    if (enabled.assignee) patch.assigneeEmail = values.assigneeEmail;
+    if (enabled.testLevel) patch.testLevel = values.testLevel;
+    if (enabled.type) patch.type = values.type;
+    if (enabled.testNature) patch.testNature = values.testNature;
     if (enabled.area) {
       patch.area = values.area;
       patch.category = values.category; // set together (may be '')
@@ -61,42 +61,37 @@ export default function BulkEditDialog({ count, meta, onApply, onClose }) {
           </p>
 
           <BulkField
-            label="Status"
-            checked={enabled.status}
-            onToggle={toggle('status')}
+            label="Type"
+            checked={enabled.testLevel}
+            onToggle={toggle('testLevel')}
           >
-            <select value={values.status} onChange={setVal('status')} disabled={!enabled.status}>
-              {meta?.statuses?.map((s) => (
-                <option key={s} value={s}>{s}</option>
+            <select value={values.testLevel} onChange={setVal('testLevel')} disabled={!enabled.testLevel}>
+              {meta?.testLevels?.map((l) => (
+                <option key={l} value={l}>{l}</option>
               ))}
             </select>
           </BulkField>
 
           <BulkField
-            label="Priority"
-            checked={enabled.priority}
-            onToggle={toggle('priority')}
+            label="Execution"
+            checked={enabled.type}
+            onToggle={toggle('type')}
           >
-            <select value={values.priority} onChange={setVal('priority')} disabled={!enabled.priority}>
-              {meta?.priorities?.map((p) => (
-                <option key={p} value={p}>{p}</option>
+            <select value={values.type} onChange={setVal('type')} disabled={!enabled.type}>
+              {meta?.types?.map((t) => (
+                <option key={t} value={t}>{t}</option>
               ))}
             </select>
           </BulkField>
 
           <BulkField
-            label="Assignee"
-            checked={enabled.assignee}
-            onToggle={toggle('assignee')}
+            label="Test Nature"
+            checked={enabled.testNature}
+            onToggle={toggle('testNature')}
           >
-            <select
-              value={values.assigneeEmail}
-              onChange={setVal('assigneeEmail')}
-              disabled={!enabled.assignee}
-            >
-              <option value="">— Unassigned —</option>
-              {meta?.users?.map((u) => (
-                <option key={u.email} value={u.email}>{u.name}</option>
+            <select value={values.testNature} onChange={setVal('testNature')} disabled={!enabled.testNature}>
+              {meta?.testNatures?.map((n) => (
+                <option key={n} value={n}>{n}</option>
               ))}
             </select>
           </BulkField>

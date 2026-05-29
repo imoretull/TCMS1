@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS schema_meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '3');
+INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '4');
 
 -- ── QA users ───────────────────────────────────────────────────────────────
 -- The authoritative user list is defined in the application's .env
@@ -90,15 +90,20 @@ CREATE TABLE IF NOT EXISTS test_cases (
   area             TEXT,                               -- references areas.name (soft)
   category         TEXT,                               -- sub-group within area; (area,category) -> categories (soft)
 
-  -- Enum (app-enforced). Allowed: Passed | Failed | Skipped | Deferred | Blocked
-  status           TEXT    NOT NULL DEFAULT 'Skipped',
-  -- Enum (app-enforced). Allowed: Critical | High | Medium | Low
-  priority         TEXT    NOT NULL DEFAULT 'Medium',
+  -- This table is a REPOSITORY of test-case definitions (TestRail-style).
+  -- Execution data (pass/fail status, who ran it, run-time priority) lives in a
+  -- future Test Runs feature, NOT here. So there is no status/assignee/priority.
 
-  assignee_email   TEXT,                               -- references users.email (soft)
-
-  -- Enum (app-enforced). Allowed: Manual | Automated
+  -- Execution method. Enum (app-enforced). Allowed: Manual | Automated.
+  -- (Labeled "Execution" in the UI.)
   type             TEXT    NOT NULL DEFAULT 'Manual',
+
+  -- Test level / suite. Enum (app-enforced). Allowed: Sanity | Smoke | Regression.
+  -- These NEST: Sanity ⊆ Smoke ⊆ Regression. A case is tagged with the
+  -- narrowest level it belongs to; inclusive filtering is applied by the app
+  -- (filtering Regression shows all, Smoke shows Smoke+Sanity, Sanity only
+  -- Sanity). (Labeled "Type" in the UI.)
+  test_level       TEXT    NOT NULL DEFAULT 'Regression',
 
   -- Enum (app-enforced). Allowed: Positive | Negative
   -- Positive = verifies correct behavior with valid input/conditions.
@@ -130,7 +135,5 @@ CREATE TABLE IF NOT EXISTS test_cases (
 -- Indexes supporting the common filter columns.
 CREATE INDEX IF NOT EXISTS idx_tc_area     ON test_cases(area);
 CREATE INDEX IF NOT EXISTS idx_tc_category ON test_cases(category);
-CREATE INDEX IF NOT EXISTS idx_tc_status   ON test_cases(status);
-CREATE INDEX IF NOT EXISTS idx_tc_priority ON test_cases(priority);
-CREATE INDEX IF NOT EXISTS idx_tc_assignee ON test_cases(assignee_email);
+CREATE INDEX IF NOT EXISTS idx_tc_level    ON test_cases(test_level);
 CREATE INDEX IF NOT EXISTS idx_tc_sprint   ON test_cases(sprint);

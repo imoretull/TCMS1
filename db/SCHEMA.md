@@ -1,6 +1,6 @@
 # TCMS Database Contract
 
-**Schema version: 3**
+**Schema version: 4**
 
 This document is the **contract** for the TCMS database. The TCMS web app is the
 *reference implementation* of these rules, but the database file is standalone:
@@ -53,12 +53,19 @@ There are **no hard foreign keys** between `test_cases` and
 `users`/`areas`/`categories`, so that historical attribution survives a user,
 area, or category being removed.
 
-- `test_cases.assignee_email`, `created_by`, `updated_by` → `users.email`
+- `test_cases.created_by`, `updated_by` → `users.email`
 - `test_cases.area` → `areas.name`
 - `(test_cases.area, test_cases.category)` → `categories.(area, name)`
 - `test_cases.sprint` → `sprints.name`
 
 Writers should keep these consistent (see §4).
+
+> **This is a test-case REPOSITORY, not an execution log.** Following TestRail's
+> separation, a repository case stores only what a test *is* (definition), not
+> the *results* of running it. So there is no `status` (pass/fail), no
+> `assignee`, and no run-time `priority` on `test_cases` — those belong to a
+> future **Test Runs** feature (a separate table that references test cases).
+> (Schema v4 removed those columns; see the changelog in §8.)
 
 ---
 
@@ -68,16 +75,30 @@ These are enforced by the application, not the DB. A compliant writer **must**
 only write these values. They are intentionally extensible — to add a value,
 update this contract (and bump the schema version if other apps must know).
 
-| Column                   | Allowed values                                        | Default     |
-| ------------------------ | ----------------------------------------------------- | ----------- |
-| `test_cases.status`      | `Passed`, `Failed`, `Skipped`, `Deferred`, `Blocked`  | `Skipped`   |
-| `test_cases.priority`    | `Critical`, `High`, `Medium`, `Low`                   | `Medium`    |
-| `test_cases.type`        | `Manual`, `Automated`                                 | `Manual`    |
-| `test_cases.test_nature` | `Positive`, `Negative`                                | `Positive`  |
-| `test_cases.pinned`      | `0` (false) or `1` (true)                             | `0`         |
-| `test_cases.is_new_functionality` | `0` (false) or `1` (true)                    | `0`         |
+| Column                   | Allowed values                            | Default      | UI label  |
+| ------------------------ | ----------------------------------------- | ------------ | --------- |
+| `test_cases.type`        | `Manual`, `Automated`                     | `Manual`     | Execution |
+| `test_cases.test_level`  | `Sanity`, `Smoke`, `Regression`           | `Regression` | Type      |
+| `test_cases.test_nature` | `Positive`, `Negative`                    | `Positive`   | Nature    |
+| `test_cases.pinned`      | `0` (false) or `1` (true)                 | `0`          | —         |
+| `test_cases.is_new_functionality` | `0` (false) or `1` (true)        | `0`          | New       |
 
 `title` must be a non-empty (non-whitespace) string.
+
+> **UI vs. column names:** the field stored as `type` (Manual/Automated) is
+> shown in the UI as **"Execution"**, and the field stored as `test_level`
+> (Sanity/Smoke/Regression) is shown as **"Type"**. The column names are kept
+> stable for compatibility; only the labels differ.
+
+**`test_level`** is the suite/level a case belongs to. The levels **nest**:
+
+> `Sanity` ⊆ `Smoke` ⊆ `Regression`
+
+A case is tagged with the **narrowest** level it belongs to. Consumers should
+filter **inclusively**: selecting a broader level also returns the narrower
+ones — filter `Regression` → all cases; `Smoke` → Smoke + Sanity; `Sanity` →
+Sanity only. (A simple way: rank `Sanity=0, Smoke=1, Regression=2` and match
+when `case.rank <= selected.rank`.)
 
 **`is_new_functionality`** is an optional tag flag: `1` marks a test case that
 covers newly built functionality (vs. existing/regression coverage). It is used
@@ -146,8 +167,9 @@ A compliant `INSERT` must:
    non-empty, register the pair:
    `INSERT OR IGNORE INTO categories (area, name) VALUES (?, ?)`. (Only register
    a category when an area is present — a category without an area is invalid.)
-6. Apply defaults (§2) for any omitted enum/`pinned` fields (`test_nature`
-   defaults to `Positive`, `is_new_functionality` defaults to `0`).
+6. Apply defaults (§2) for any omitted enum/`pinned` fields (`type`→`Manual`,
+   `test_level`→`Regression`, `test_nature`→`Positive`,
+   `is_new_functionality`→`0`).
 7. If `sprint` is non-empty, register it:
    `INSERT OR IGNORE INTO sprints (name) VALUES (?)`.
 
@@ -254,7 +276,7 @@ A plain `DELETE FROM test_cases WHERE id = ?`. No soft-delete in v1.
 
 ## 8. Versioning
 
-`schema_meta.schema_version` is currently **`3`**. Before reading/writing, an
+`schema_meta.schema_version` is currently **`4`**. Before reading/writing, an
 app may check it:
 
 ```sql
@@ -266,6 +288,12 @@ would break apps written against an older version.
 
 ### Changelog
 
+- **v4** — Made `test_cases` a pure repository: **removed** the execution
+  columns `status`, `priority`, and `assignee_email` (these move to a future
+  Test Runs feature). **Added** `test_level` (`Sanity`/`Smoke`/`Regression`,
+  nesting/inclusive — see §2). UI relabels: `type`→"Execution",
+  `test_level`→"Type". The reference app auto-migrates an older file on startup
+  (adds `test_level`, drops the three removed columns).
 - **v3** — Added the `sprints` table and two optional tag columns on
   `test_cases`: `is_new_functionality` (0/1) and `sprint` (free text, e.g.
   `S23`). Both are nullable/defaulted, so older readers still work; the

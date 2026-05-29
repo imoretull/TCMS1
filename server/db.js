@@ -116,15 +116,37 @@ export function openDataset(name) {
  * schema versions BEFORE applying schema.sql, because schema.sql creates an
  * index on a newer column which would otherwise fail on a pre-upgrade file.
  */
+// The canonical schema version, parsed from schema.sql so there's one source
+// of truth. Used to (re)stamp schema_meta after an in-place upgrade, since the
+// INSERT OR IGNORE in schema.sql won't update an existing version row.
+const SCHEMA_VERSION = (() => {
+  const m = SCHEMA_SQL.match(/'schema_version',\s*'(\d+)'/);
+  return m ? m[1] : '1';
+})();
+
 function migrate(db) {
-  addMissingColumns(db);
+  migrateColumns(db);
   db.exec(SCHEMA_SQL);
+  // Stamp the current version (covers in-place upgrades of an existing DB).
+  db.prepare(
+    `INSERT INTO schema_meta (key, value) VALUES ('schema_version', @v)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).run({ v: SCHEMA_VERSION });
 }
 
-function addMissingColumns(db) {
+/**
+ * Forward-migrate an existing test_cases table to the current schema version:
+ * add any new columns and drop columns removed in later versions. Runs BEFORE
+ * schema.sql so that (a) indexes schema.sql creates on new columns don't fail
+ * with "no such column", and (b) the table shape matches the current model.
+ * No-op on a brand-new database (schema.sql creates the table from scratch).
+ */
+function migrateColumns(db) {
   const info = db.prepare(`PRAGMA table_info(test_cases)`).all();
   if (info.length === 0) return; // fresh DB — schema.sql will create the table
   const cols = new Set(info.map((c) => c.name));
+
+  // Columns introduced in later versions (add if missing).
   const additions = [
     ['category', `ALTER TABLE test_cases ADD COLUMN category TEXT`],
     [
@@ -136,9 +158,27 @@ function addMissingColumns(db) {
       `ALTER TABLE test_cases ADD COLUMN is_new_functionality INTEGER NOT NULL DEFAULT 0`,
     ],
     ['sprint', `ALTER TABLE test_cases ADD COLUMN sprint TEXT`],
+    // v4: test level (Sanity/Smoke/Regression).
+    [
+      'test_level',
+      `ALTER TABLE test_cases ADD COLUMN test_level TEXT NOT NULL DEFAULT 'Regression'`,
+    ],
   ];
   for (const [name, sql] of additions) {
     if (!cols.has(name)) db.exec(sql);
+  }
+
+  // v4: this is a repository — execution fields (status/priority/assignee) were
+  // removed. Drop them from older databases so the shape matches the model.
+  const removals = ['status', 'priority', 'assignee_email'];
+  for (const col of removals) {
+    if (cols.has(col)) {
+      // Index on a dropped column would block the drop; remove it first.
+      if (col === 'status') db.exec(`DROP INDEX IF EXISTS idx_tc_status`);
+      if (col === 'priority') db.exec(`DROP INDEX IF EXISTS idx_tc_priority`);
+      if (col === 'assignee_email') db.exec(`DROP INDEX IF EXISTS idx_tc_assignee`);
+      db.exec(`ALTER TABLE test_cases DROP COLUMN ${col}`);
+    }
   }
 }
 

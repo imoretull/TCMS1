@@ -1,13 +1,11 @@
 import db, { transaction } from './db.js';
 import {
-  STATUSES,
-  PRIORITIES,
   TYPES,
   TEST_NATURES,
-  DEFAULT_STATUS,
-  DEFAULT_PRIORITY,
+  TEST_LEVELS,
   DEFAULT_TYPE,
   DEFAULT_TEST_NATURE,
+  DEFAULT_TEST_LEVEL,
 } from './constants.js';
 
 /** Error thrown when an update is rejected because the record changed. */
@@ -40,11 +38,9 @@ function rowToApi(row) {
     title: row.title,
     area: row.area,
     category: row.category,
-    status: row.status,
-    priority: row.priority,
-    assigneeEmail: row.assignee_email,
     type: row.type,
     testNature: row.test_nature,
+    testLevel: row.test_level,
     preconditions: row.preconditions,
     testData: row.test_data,
     testSteps: row.test_steps,
@@ -99,18 +95,15 @@ function ensureSprint(sprint) {
   return trimmed;
 }
 
-function validateEnums({ status, priority, type, testNature }) {
-  if (status && !STATUSES.includes(status)) {
-    throw new ValidationError(`Invalid status: ${status}`);
-  }
-  if (priority && !PRIORITIES.includes(priority)) {
-    throw new ValidationError(`Invalid priority: ${priority}`);
-  }
+function validateEnums({ type, testNature, testLevel }) {
   if (type && !TYPES.includes(type)) {
-    throw new ValidationError(`Invalid type: ${type}`);
+    throw new ValidationError(`Invalid execution type: ${type}`);
   }
   if (testNature && !TEST_NATURES.includes(testNature)) {
     throw new ValidationError(`Invalid test nature: ${testNature}`);
+  }
+  if (testLevel && !TEST_LEVELS.includes(testLevel)) {
+    throw new ValidationError(`Invalid test level: ${testLevel}`);
   }
 }
 
@@ -145,12 +138,12 @@ export function createTestCase(input, user) {
   const info = db
     .prepare(
       `INSERT INTO test_cases (
-        tc_id, title, area, category, status, priority, assignee_email, type, test_nature,
+        tc_id, title, area, category, type, test_nature, test_level,
         preconditions, test_data, test_steps, expected_result, comments, pinned,
         is_new_functionality, sprint,
         created_at, created_by, updated_at, updated_by
       ) VALUES (
-        @tc_id, @title, @area, @category, @status, @priority, @assignee_email, @type, @test_nature,
+        @tc_id, @title, @area, @category, @type, @test_nature, @test_level,
         @preconditions, @test_data, @test_steps, @expected_result, @comments, @pinned,
         @is_new_functionality, @sprint,
         @created_at, @created_by, @updated_at, @updated_by
@@ -161,11 +154,9 @@ export function createTestCase(input, user) {
       title: input.title.trim(),
       area,
       category,
-      status: input.status || DEFAULT_STATUS,
-      priority: input.priority || DEFAULT_PRIORITY,
-      assignee_email: input.assigneeEmail || null,
       type: input.type || DEFAULT_TYPE,
       test_nature: input.testNature || DEFAULT_TEST_NATURE,
+      test_level: input.testLevel || DEFAULT_TEST_LEVEL,
       is_new_functionality: input.isNewFunctionality ? 1 : 0,
       sprint,
       preconditions: input.preconditions || '',
@@ -224,14 +215,9 @@ export function updateTestCase(id, input, user) {
     title: input.title !== undefined ? String(input.title).trim() : existing.title,
     area,
     category,
-    status: input.status ?? existing.status,
-    priority: input.priority ?? existing.priority,
-    assignee_email:
-      input.assigneeEmail !== undefined
-        ? input.assigneeEmail || null
-        : existing.assignee_email,
     type: input.type ?? existing.type,
     test_nature: input.testNature ?? existing.test_nature,
+    test_level: input.testLevel ?? existing.test_level,
     preconditions: input.preconditions ?? existing.preconditions,
     test_data: input.testData ?? existing.test_data,
     test_steps: input.testSteps ?? existing.test_steps,
@@ -257,8 +243,7 @@ export function updateTestCase(id, input, user) {
   db.prepare(
     `UPDATE test_cases SET
       title = @title, area = @area, category = @category,
-      status = @status, priority = @priority,
-      assignee_email = @assignee_email, type = @type, test_nature = @test_nature,
+      type = @type, test_nature = @test_nature, test_level = @test_level,
       preconditions = @preconditions, test_data = @test_data,
       test_steps = @test_steps, expected_result = @expected_result,
       comments = @comments, pinned = @pinned,
@@ -304,11 +289,9 @@ export function duplicateTestCase(id, user) {
       title: `${src.title} (copy)`,
       area: src.area,
       category: src.category,
-      status: src.status,
-      priority: src.priority,
-      assigneeEmail: src.assigneeEmail,
       type: src.type,
       testNature: src.testNature,
+      testLevel: src.testLevel,
       preconditions: src.preconditions,
       testData: src.testData,
       testSteps: src.testSteps,
@@ -329,7 +312,8 @@ export function duplicateTestCase(id, user) {
  * BYPASS per-row optimistic locking (see db/SCHEMA.md §4). Runs in one
  * transaction. Returns { updated }.
  *
- * Allowed patch fields: status, priority, assigneeEmail, area, category, sprint.
+ * Allowed patch fields: type (Execution), testNature, testLevel, area,
+ * category, sprint.
  */
 export function bulkUpdateTestCases(ids, patch, user) {
   if (!Array.isArray(ids) || ids.length === 0) {
@@ -341,17 +325,17 @@ export function bulkUpdateTestCases(ids, patch, user) {
   const sets = [];
   const params = {};
 
-  if (patch.status !== undefined) {
-    sets.push('status = @status');
-    params.status = patch.status;
+  if (patch.type !== undefined) {
+    sets.push('type = @type');
+    params.type = patch.type;
   }
-  if (patch.priority !== undefined) {
-    sets.push('priority = @priority');
-    params.priority = patch.priority;
+  if (patch.testNature !== undefined) {
+    sets.push('test_nature = @test_nature');
+    params.test_nature = patch.testNature;
   }
-  if (patch.assigneeEmail !== undefined) {
-    sets.push('assignee_email = @assignee_email');
-    params.assignee_email = patch.assigneeEmail || null;
+  if (patch.testLevel !== undefined) {
+    sets.push('test_level = @test_level');
+    params.test_level = patch.testLevel;
   }
   if (patch.area !== undefined) {
     const area = ensureArea(patch.area);

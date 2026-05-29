@@ -1,31 +1,32 @@
 import { useMemo } from 'react';
-import { StatusBadge, PriorityBadge, TypeBadge, NatureBadge } from './badges.jsx';
+import { TypeBadge, NatureBadge, LevelBadge } from './badges.jsx';
 
-const PRIORITY_RANK = { Critical: 0, High: 1, Medium: 2, Low: 3 };
-
-function userName(meta, email) {
-  if (!email) return '—';
-  const u = meta?.users?.find((x) => x.email === email);
-  return u ? u.name : email;
-}
+// Test levels nest: Sanity ⊆ Smoke ⊆ Regression. Rank by breadth so that
+// filtering inclusively (a case matches if its level is at or below the
+// selected one) is a simple comparison.
+const LEVEL_RANK = { Sanity: 0, Smoke: 1, Regression: 2 };
 
 // Apply client-side filtering.
-function applyFilters(testCases, filters, meta) {
+function applyFilters(testCases, filters) {
   const q = filters.search.trim().toLowerCase();
+  const selectedLevelRank =
+    filters.testLevel !== '' ? LEVEL_RANK[filters.testLevel] : null;
   return testCases.filter((t) => {
     if (filters.area && t.area !== filters.area) return false;
     if (filters.category && t.category !== filters.category) return false;
-    if (filters.status && t.status !== filters.status) return false;
-    if (filters.priority && t.priority !== filters.priority) return false;
-    if (filters.assignee && t.assigneeEmail !== filters.assignee) return false;
     if (filters.type && t.type !== filters.type) return false;
     if (filters.testNature && t.testNature !== filters.testNature) return false;
+    // Inclusive test-level filter: a case shows if its level is at or below the
+    // selected one (Regression -> all, Smoke -> Smoke+Sanity, Sanity -> Sanity).
+    if (selectedLevelRank !== null) {
+      const caseRank = LEVEL_RANK[t.testLevel] ?? LEVEL_RANK.Regression;
+      if (caseRank > selectedLevelRank) return false;
+    }
     if (filters.sprint && t.sprint !== filters.sprint) return false;
     if (filters.newFunctionality === 'yes' && !t.isNewFunctionality) return false;
     if (filters.newFunctionality === 'no' && t.isNewFunctionality) return false;
     if (q) {
-      const assignee = userName(meta, t.assigneeEmail).toLowerCase();
-      const haystack = [t.tcId, t.title, t.area, t.category, t.sprint, assignee]
+      const haystack = [t.tcId, t.title, t.area, t.category, t.sprint]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -36,7 +37,7 @@ function applyFilters(testCases, filters, meta) {
 }
 
 // Apply sorting. Pinned cases always float to the top regardless of sort.
-function applySort(rows, sort, meta) {
+function applySort(rows, sort) {
   if (!sort.key) {
     return [...rows].sort(
       (a, b) =>
@@ -48,10 +49,8 @@ function applySort(rows, sort, meta) {
   const dir = sort.dir === 'asc' ? 1 : -1;
   const val = (t) => {
     switch (sort.key) {
-      case 'priority':
-        return PRIORITY_RANK[t.priority] ?? 99;
-      case 'assignee':
-        return userName(meta, t.assigneeEmail).toLowerCase();
+      case 'testLevel':
+        return LEVEL_RANK[t.testLevel] ?? 99;
       case 'updatedAt':
         return new Date(t.updatedAt).getTime();
       default:
@@ -104,9 +103,9 @@ export default function TestCaseTable({
   onSetSelection,
 }) {
   const rows = useMemo(() => {
-    const filtered = applyFilters(testCases, filters, meta);
-    return applySort(filtered, sort, meta);
-  }, [testCases, filters, sort, meta]);
+    const filtered = applyFilters(testCases, filters);
+    return applySort(filtered, sort);
+  }, [testCases, filters, sort]);
 
   // Select-all operates on the currently-visible (filtered) rows.
   const visibleIds = rows.map((r) => r.id);
@@ -158,13 +157,12 @@ export default function TestCaseTable({
             <th className="col-pin" title="Pinned"></th>
             <SortHeader label="TC ID" sortKey="tcId" sort={sort} setSort={setSort} className="col-id" />
             <SortHeader label="Title" sortKey="title" sort={sort} setSort={setSort} className="col-title" />
-            <SortHeader label="Area / Category" sortKey="area" sort={sort} setSort={setSort} className="col-area" />
-            <SortHeader label="Status" sortKey="status" sort={sort} setSort={setSort} className="col-status" />
-            <SortHeader label="Priority" sortKey="priority" sort={sort} setSort={setSort} className="col-priority" />
-            <SortHeader label="Type" sortKey="type" sort={sort} setSort={setSort} className="col-type" />
+            <SortHeader label="Area" sortKey="area" sort={sort} setSort={setSort} className="col-area" />
+            <SortHeader label="Category" sortKey="category" sort={sort} setSort={setSort} className="col-category" />
+            <SortHeader label="Type" sortKey="testLevel" sort={sort} setSort={setSort} className="col-level" />
+            <SortHeader label="Execution" sortKey="type" sort={sort} setSort={setSort} className="col-type" />
             <SortHeader label="Nature" sortKey="testNature" sort={sort} setSort={setSort} className="col-nature" />
             <SortHeader label="Sprint" sortKey="sprint" sort={sort} setSort={setSort} className="col-sprint" />
-            <SortHeader label="Assignee" sortKey="assignee" sort={sort} setSort={setSort} className="col-assignee" />
           </tr>
         </thead>
         <tbody>
@@ -205,22 +203,17 @@ export default function TestCaseTable({
                 {t.title}
               </td>
               <td className="col-area">
-                {t.area ? (
-                  <span className="area-cell">
-                    <span className="area-tag">{t.area}</span>
-                    {t.category && (
-                      <span className="category-tag">{t.category}</span>
-                    )}
-                  </span>
+                {t.area ? <span className="area-tag">{t.area}</span> : '—'}
+              </td>
+              <td className="col-category">
+                {t.category ? (
+                  <span className="category-tag plain">{t.category}</span>
                 ) : (
                   '—'
                 )}
               </td>
-              <td className="col-status">
-                <StatusBadge status={t.status} />
-              </td>
-              <td className="col-priority">
-                <PriorityBadge priority={t.priority} />
+              <td className="col-level">
+                <LevelBadge level={t.testLevel} />
               </td>
               <td className="col-type">
                 <TypeBadge type={t.type} />
@@ -231,7 +224,6 @@ export default function TestCaseTable({
               <td className="col-sprint">
                 {t.sprint ? <span className="sprint-tag">{t.sprint}</span> : '—'}
               </td>
-              <td className="col-assignee">{userName(meta, t.assigneeEmail)}</td>
             </tr>
           ))}
         </tbody>

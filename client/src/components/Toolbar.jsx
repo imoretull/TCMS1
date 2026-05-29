@@ -63,35 +63,17 @@ export default function Toolbar({
           ))}
         </select>
 
-        <select value={filters.status} onChange={set('status')} className="filter">
-          <option value="">All statuses</option>
-          {meta?.statuses?.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-
-        <select value={filters.priority} onChange={set('priority')} className="filter">
-          <option value="">All priorities</option>
-          {meta?.priorities?.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-
-        <select value={filters.assignee} onChange={set('assignee')} className="filter">
-          <option value="">All assignees</option>
-          {meta?.users?.map((u) => (
-            <option key={u.email} value={u.email}>
-              {u.name}
+        <select value={filters.testLevel} onChange={set('testLevel')} className="filter">
+          <option value="">All types</option>
+          {meta?.testLevels?.map((l) => (
+            <option key={l} value={l}>
+              {l}
             </option>
           ))}
         </select>
 
         <select value={filters.type} onChange={set('type')} className="filter">
-          <option value="">All types</option>
+          <option value="">All execution</option>
           {meta?.types?.map((t) => (
             <option key={t} value={t}>
               {t}

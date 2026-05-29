@@ -12,11 +12,9 @@ const EMPTY_FILTERS = {
   search: '',
   area: '',
   category: '',
-  status: '',
-  priority: '',
-  assignee: '',
-  type: '',
+  type: '', // Execution: Manual/Automated
   testNature: '',
+  testLevel: '', // Sanity/Smoke/Regression (inclusive)
   sprint: '',
   newFunctionality: '', // '', 'yes', or 'no'
 };
