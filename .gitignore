@@ -1,10 +1,12 @@
+# Dependencies and build output are regenerated (npm install / npm run build).
 node_modules/
 client/node_modules/
 client/dist/
-data/
-*.db
+
+# Transient SQLite sidecar files (the main *.db files ARE committed for now so
+# the demo data travels with the repo — see note in README).
 *.db-shm
 *.db-wal
-.env
+
 .DS_Store
 *.log
