@@ -40,6 +40,10 @@ export const api = {
   // Metadata
   meta: () => request('GET', '/api/meta'),
 
+  // Datasets (DB switcher)
+  listDatasets: () => request('GET', '/api/datasets'),
+  switchDataset: (name) => request('POST', '/api/datasets/switch', { name }),
+
   // Test cases
   listTestCases: () => request('GET', '/api/test-cases'),
   createTestCase: (data) => request('POST', '/api/test-cases', data),

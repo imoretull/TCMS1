@@ -35,6 +35,10 @@ and a single-file database.
 - **Bulk actions** — select rows (with select-all of the filtered set) to bulk
   **delete** or bulk **edit** (set status, priority, assignee, area/category, or
   sprint on many cases at once).
+- **Dataset switcher** — switch the live database from the header (e.g. Amazon ↔
+  Google). Each dataset is a separate SQLite file with the *same* schema, so it's
+  truly plug-and-play: drop a new seeded `.db` into the data folder and it
+  appears in the switcher.
 - **Edit-locking / conflict detection** — optimistic locking via `updated_at`.
   If someone changed a case while you were editing, you get a clear
   "changed since you opened it" prompt instead of silently clobbering them.
@@ -50,11 +54,12 @@ and negative cases — plus **10 fake QA users**.
 
 ## Quick start
 
-You need **Node.js 18+** (`node --version` to check).
+You need **Node.js 22+** (`node --version` to check) — the app uses Node's
+built-in `node:sqlite`, so there's no native build step.
 
 ```bash
 # 1. From the project root, install everything (root + client deps),
-#    build the React app, and seed the demo database:
+#    build the React app, and seed the demo datasets (Amazon + Google):
 npm run setup
 
 # 2. Start the server:
@@ -64,12 +69,12 @@ npm start
 Then open **http://localhost:4000**.
 
 `npm run setup` is a convenience that runs `npm install`, `npm run build`, and
-`npm run seed` in sequence. To do it manually:
+`npm run seed:demo` in sequence. To do it manually:
 
 ```bash
 npm install        # installs root deps + (via postinstall) client deps
 npm run build      # builds the React app into client/dist
-npm run seed       # seeds the SQLite DB with demo data
+npm run seed:demo  # seeds amazon.db and google.db demo datasets
 npm start          # serves the app on http://localhost:4000
 ```
 
@@ -135,12 +140,34 @@ dev server on port **5173** (which proxies `/api` to the backend). Open
 
 ## Data & backups
 
-- The entire database is a single SQLite file at `./data/tcms.db` (configurable
-  via `DATABASE_FILE`).
-- **Back up:** copy the `data/` folder (or just `tcms.db`). **Restore:** put the
-  file back. That's it.
-- **Reseed from scratch:** `npm run seed -- --reset` wipes test cases/areas and
-  re-inserts the demo data.
+- Each dataset is a single SQLite file in `./data/` (e.g. `amazon.db`,
+  `google.db`). The folder is set by `DATA_DIR`; the startup dataset by
+  `DEFAULT_DATASET`.
+- **Back up:** copy the `data/` folder (or an individual `*.db`). **Restore:**
+  put the file back. That's it.
+- **Reseed the demo datasets:** `npm run seed:demo` rebuilds `amazon.db` and
+  `google.db` from scratch. Seed one explicitly with, e.g.,
+  `node server/seed.js --dataset=google --company=Google --reset`.
+
+---
+
+## Multiple datasets & the switcher
+
+Because every dataset shares the **same schema/contract**, the app can serve
+different SQLite files interchangeably — true plug-and-play:
+
+- The header has a **dataset switcher**. Switching re-points the live database
+  server-wide; the table, filters, and detail panel reload against the selected
+  file. (The demo brand label follows the active dataset, e.g. Amazon ↔ Google.)
+- The switcher lists every `*.db` in `DATA_DIR`. **To add a dataset**, drop a
+  seeded `.db` into that folder — it appears automatically. Create one with the
+  seed tool (it applies the schema to a new file):
+  ```bash
+  node server/seed.js --dataset=microsoft --company=Amazon --reset
+  ```
+  (Use any `--company` from `server/seedData.js`, or add your own set there.)
+- Switching is **global** (everyone sees the same active dataset) and datasets
+  are fully **isolated** — edits in one file never affect another.
 
 ---
 

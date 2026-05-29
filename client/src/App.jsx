@@ -6,6 +6,7 @@ import TestCasePanel from './components/TestCasePanel.jsx';
 import Toolbar from './components/Toolbar.jsx';
 import BulkBar from './components/BulkBar.jsx';
 import BulkEditDialog from './components/BulkEditDialog.jsx';
+import DatasetSwitcher from './components/DatasetSwitcher.jsx';
 
 const EMPTY_FILTERS = {
   search: '',
@@ -38,6 +39,9 @@ export default function App() {
   // Bulk selection: Set of selected test-case ids, and the bulk-edit dialog.
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+
+  // Active dataset name (drives the demo brand label in the header).
+  const [datasetName, setDatasetName] = useState(null);
 
   // ── Bootstrap: are we already signed in? ──────────────────────────────────
   useEffect(() => {
@@ -73,6 +77,21 @@ export default function App() {
     setToast({ message, kind });
     window.clearTimeout(showToast._t);
     showToast._t = window.setTimeout(() => setToast(null), 4000);
+  }
+
+  // Dataset switched server-wide: reset view state and reload from the new DB.
+  async function handleDatasetSwitched(name) {
+    setDatasetName(name);
+    setPanel(null);
+    clearSelection();
+    setBulkEditOpen(false);
+    setFilters(EMPTY_FILTERS);
+    setSort({ key: null, dir: 'asc' });
+    await loadData();
+    showToast(
+      `Switched to ${name.charAt(0).toUpperCase() + name.slice(1)} dataset.`,
+      'success'
+    );
   }
 
   async function handleLogout() {
@@ -226,11 +245,23 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="brand">
-          <span className="brand-mark">a</span>
-          <span className="brand-name">Amazon</span>
+          <span className="brand-mark">
+            {(datasetName || 'a').charAt(0).toLowerCase()}
+          </span>
+          <span className="brand-name">
+            {datasetName
+              ? datasetName.charAt(0).toUpperCase() + datasetName.slice(1)
+              : 'TCMS'}
+          </span>
           <span className="brand-sub">Test Case Management</span>
         </div>
         <div className="header-right">
+          <DatasetSwitcher
+            onInit={setDatasetName}
+            onSwitched={handleDatasetSwitched}
+            onError={(m) => showToast(m, 'error')}
+          />
+          <span className="header-divider" />
           <span className="current-user" title={user.email}>
             {user.name}
           </span>

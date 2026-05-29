@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
-import { DATABASE_FILE, USERS } from './config.js';
+import { DATA_DIR, DATABASE_FILE, DEFAULT_DATASET, USERS } from './config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -11,42 +11,117 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // (`sqlite3 tcms.db < db/schema.sql`) — see db/SCHEMA.md for the full data
 // contract that every writer must follow.
 const SCHEMA_PATH = path.resolve(__dirname, '..', 'db', 'schema.sql');
+const SCHEMA_SQL = fs.readFileSync(SCHEMA_PATH, 'utf8');
 
-// Ensure the data directory exists before opening the DB file.
-fs.mkdirSync(path.dirname(DATABASE_FILE), { recursive: true });
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
-// node:sqlite (built into Node 22+) — no native build step, runs anywhere
-// Node runs. WAL improves concurrency for simultaneous readers/writers.
-const db = new DatabaseSync(DATABASE_FILE);
-db.exec('PRAGMA journal_mode = WAL');
-db.exec('PRAGMA foreign_keys = ON');
+// ── Dataset switcher ─────────────────────────────────────────────────────────
+// The app can serve different SQLite files ("datasets") that all share the same
+// schema/contract — e.g. amazon.db, google.db. Because the data structure is
+// identical, switching is plug-and-play: we just point the live connection at a
+// different file (running migrate + user-sync against it) and route every query
+// through getDb(). Switching is global (server-wide).
 
-/**
- * Apply the canonical schema. It uses CREATE TABLE IF NOT EXISTS / INSERT OR
- * IGNORE throughout, so it is safe to run on every startup (no-op if the
- * database is already initialized).
- */
-function migrate() {
-  // Order matters: bring an existing (older) test_cases table up to date with
-  // any new COLUMNS *before* applying schema.sql, because schema.sql creates an
-  // index on a newer column (idx_tc_category) which would otherwise fail with
-  // "no such column" on a pre-upgrade database. On a brand-new database
-  // test_cases doesn't exist yet, so addMissingColumns is a no-op and schema.sql
-  // creates everything from scratch.
-  addMissingColumns();
-  const schemaSql = fs.readFileSync(SCHEMA_PATH, 'utf8');
-  db.exec(schemaSql);
+let current = null; // { name, file, db }
+
+/** Turn a .db filename into a friendly dataset name (file stem). */
+function datasetNameFromFile(file) {
+  return path.basename(file, path.extname(file));
+}
+
+/** Resolve a safe absolute path for a dataset name, guarding against traversal. */
+function fileForDataset(name) {
+  // Only a bare name is allowed (no path separators), and it must resolve
+  // inside DATA_DIR.
+  if (!name || /[\\/]/.test(name) || name.includes('..')) {
+    throw new Error(`Invalid dataset name: ${name}`);
+  }
+  const file = path.join(DATA_DIR, `${name}.db`);
+  const rel = path.relative(DATA_DIR, file);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error(`Dataset path escapes data dir: ${name}`);
+  }
+  return file;
+}
+
+/** List available datasets (every *.db in DATA_DIR), sorted by name. */
+export function listDatasets() {
+  const entries = fs
+    .readdirSync(DATA_DIR, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.toLowerCase().endsWith('.db'))
+    .map((e) => datasetNameFromFile(e.name))
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  return entries;
+}
+
+/** The currently-active dataset name. */
+export function getCurrentDataset() {
+  return current?.name ?? null;
+}
+
+/** The live connection for the active dataset. All queries go through this. */
+export function getDb() {
+  if (!current) throw new Error('No dataset is open.');
+  return current.db;
+}
+
+/** Open a dataset file: create/upgrade schema and sync users, then make live. */
+function open(name) {
+  const file = fileForDataset(name);
+  const db = new DatabaseSync(file);
+  db.exec('PRAGMA journal_mode = WAL');
+  db.exec('PRAGMA foreign_keys = ON');
+  migrate(db);
+  syncUsers(db);
+  current = { name, file, db };
+  return current;
 }
 
 /**
- * Lightweight forward-migration for databases created by an older schema
- * version. `schema.sql` uses CREATE TABLE IF NOT EXISTS, which adds new tables
- * (e.g. `categories`) but cannot add new COLUMNS to an existing table. Here we
- * add any columns introduced in later versions if they are missing, so an
- * existing v1 file is upgraded in place without data loss. No-op when the
- * test_cases table doesn't exist yet (fresh database).
+ * Switch the active dataset to `name`. Closes the previous connection. Returns
+ * the new current dataset name. Throws if the dataset file doesn't exist
+ * (use openDataset to create a new one).
  */
-function addMissingColumns() {
+export function switchDataset(name) {
+  const file = fileForDataset(name);
+  if (!fs.existsSync(file)) {
+    throw new Error(`Dataset not found: ${name}`);
+  }
+  return openDataset(name);
+}
+
+/**
+ * Make `name` the active dataset, creating its file if it doesn't exist yet.
+ * Used by the seed tooling to provision new datasets.
+ */
+export function openDataset(name) {
+  if (current?.name === name) return current.name; // already active
+  const prev = current;
+  open(name);
+  if (prev?.db) {
+    try {
+      prev.db.close();
+    } catch {
+      /* ignore close errors */
+    }
+  }
+  return current.name;
+}
+
+// ── Schema setup (runs against whichever connection is being opened) ──────────
+
+/**
+ * Apply the canonical schema to `db`. Safe to run on every open (uses CREATE
+ * ... IF NOT EXISTS / INSERT OR IGNORE). Adds any columns introduced in later
+ * schema versions BEFORE applying schema.sql, because schema.sql creates an
+ * index on a newer column which would otherwise fail on a pre-upgrade file.
+ */
+function migrate(db) {
+  addMissingColumns(db);
+  db.exec(SCHEMA_SQL);
+}
+
+function addMissingColumns(db) {
   const info = db.prepare(`PRAGMA table_info(test_cases)`).all();
   if (info.length === 0) return; // fresh DB — schema.sql will create the table
   const cols = new Set(info.map((c) => c.name));
@@ -68,27 +143,24 @@ function addMissingColumns() {
 }
 
 /**
- * Upsert the configured QA users from .env into the DB on every startup.
- * This keeps the user list in sync with the single source of truth (.env)
- * without requiring a migration. Removed users stay in the DB so historical
- * attribution (created_by / assignee) is preserved.
+ * Upsert the configured QA users from .env into `db`. Users are shared config
+ * across all datasets (same QA team), so every dataset gets the same user list.
+ * Removed users stay so historical attribution is preserved.
  */
-function syncUsers() {
+function syncUsers(db) {
   const upsert = db.prepare(`
     INSERT INTO users (email, name) VALUES (@email, @name)
     ON CONFLICT(email) DO UPDATE SET name = excluded.name
   `);
-  transaction(() => {
+  transactionOn(db, () => {
     for (const u of USERS) upsert.run({ email: u.email, name: u.name });
   });
 }
 
-/**
- * Run `fn` inside a transaction. node:sqlite has no built-in transaction
- * wrapper (unlike better-sqlite3), so we manage BEGIN/COMMIT/ROLLBACK here.
- * Returns whatever `fn` returns.
- */
-export function transaction(fn) {
+// ── Transactions ─────────────────────────────────────────────────────────────
+
+/** Run `fn` in a transaction on a specific connection. */
+export function transactionOn(db, fn) {
   db.exec('BEGIN');
   try {
     const result = fn();
@@ -100,7 +172,46 @@ export function transaction(fn) {
   }
 }
 
-migrate();
-syncUsers();
+/** Run `fn` in a transaction on the current (live) dataset connection. */
+export function transaction(fn) {
+  return transactionOn(getDb(), fn);
+}
 
-export default db;
+// ── Startup: choose the initial dataset ──────────────────────────────────────
+
+function pickInitialDataset() {
+  const available = listDatasets();
+
+  // 1) Honor DEFAULT_DATASET if present (case-insensitive).
+  const wanted = DEFAULT_DATASET?.toLowerCase();
+  const match = available.find((n) => n.toLowerCase() === wanted);
+  if (match) return match;
+
+  // 2) If nothing matches but the configured DATABASE_FILE exists, use its name
+  //    (and ensure it lives in DATA_DIR so the switcher can see it).
+  const dbName = datasetNameFromFile(DATABASE_FILE);
+  if (available.includes(dbName)) return dbName;
+
+  // 3) Otherwise the first available dataset.
+  if (available.length > 0) return available[0];
+
+  // 4) Nothing exists yet — create the default one so the app still runs.
+  return DEFAULT_DATASET;
+}
+
+open(pickInitialDataset());
+
+// Back-compat default export: a proxy that always forwards to the *current*
+// connection, so existing `import db from './db.js'` call sites keep working
+// even across switches. New code should prefer getDb().
+const dbProxy = new Proxy(
+  {},
+  {
+    get(_t, prop) {
+      const value = getDb()[prop];
+      return typeof value === 'function' ? value.bind(getDb()) : value;
+    },
+  }
+);
+
+export default dbProxy;

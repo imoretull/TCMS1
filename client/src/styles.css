@@ -171,6 +171,40 @@ body {
 .current-user {
   font-weight: 600;
 }
+.header-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+}
+.dataset-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f6f7f9;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 2px 6px 2px 10px;
+}
+.dataset-switcher .dataset-icon {
+  font-size: 14px;
+  opacity: 0.7;
+}
+.dataset-switcher select {
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 4px;
+}
+.dataset-switcher select:focus {
+  outline: none;
+}
+.dataset-static {
+  font-weight: 600;
+  color: var(--text-muted);
+}
 
 .app-main {
   flex: 1;

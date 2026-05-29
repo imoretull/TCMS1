@@ -6,6 +6,11 @@ import cookieParser from 'cookie-parser';
 import { PORT, ROOT_DIR, USERS } from './config.js';
 import { STATUSES, PRIORITIES, TYPES, TEST_NATURES } from './constants.js';
 import {
+  listDatasets,
+  getCurrentDataset,
+  switchDataset,
+} from './db.js';
+import {
   verifyCredentials,
   createSession,
   destroySession,
@@ -83,6 +88,28 @@ api.get('/meta', requireAuth, (req, res) => {
     sprints: listSprints(),
     users: listUsers(),
   });
+});
+
+// ── Datasets (plug-and-play DB switcher) ─────────────────────────────────────
+
+// List available datasets and which one is currently active (server-wide).
+api.get('/datasets', requireAuth, (req, res) => {
+  res.json({
+    datasets: listDatasets(),
+    current: getCurrentDataset(),
+  });
+});
+
+// Switch the active dataset for everyone. Body: { name }.
+api.post('/datasets/switch', requireAuth, (req, res, next) => {
+  try {
+    const name = req.body?.name;
+    const current = switchDataset(name);
+    res.json({ current });
+  } catch (err) {
+    // switchDataset throws plain Errors for bad/missing names → treat as 400.
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // ── Test cases ────────────────────────────────────────────────────────────-
