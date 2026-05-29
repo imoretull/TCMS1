@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS schema_meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '1');
+INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '2');
 
 -- ── QA users ───────────────────────────────────────────────────────────────
 -- The authoritative user list is defined in the application's .env
@@ -49,6 +49,18 @@ CREATE TABLE IF NOT EXISTS users (
 -- a new area on the fly when a test case references one that does not exist.
 CREATE TABLE IF NOT EXISTS areas (
   name TEXT PRIMARY KEY
+);
+
+-- ── Categories ──────────────────────────────────────────────────────────────
+-- A category is a sub-grouping WITHIN an area: Area -> Category is a
+-- parent/child hierarchy (e.g. Checkout -> Discount, Checkout -> Shipping).
+-- User-managed: the application inserts a new (area, name) pair on the fly when
+-- a test case references one that does not exist. The same category name may
+-- exist under different areas, so the primary key is the pair.
+CREATE TABLE IF NOT EXISTS categories (
+  area TEXT NOT NULL,   -- parent area (references areas.name, soft)
+  name TEXT NOT NULL,   -- category name within that area
+  PRIMARY KEY (area, name)
 );
 
 -- ── Counters ────────────────────────────────────────────────────────────────
@@ -68,6 +80,7 @@ CREATE TABLE IF NOT EXISTS test_cases (
   tc_id            TEXT    NOT NULL UNIQUE,            -- public id, e.g. 'TC-1001'
   title            TEXT    NOT NULL,                   -- must be non-empty (app-enforced)
   area             TEXT,                               -- references areas.name (soft)
+  category         TEXT,                               -- sub-group within area; (area,category) -> categories (soft)
 
   -- Enum (app-enforced). Allowed: Passed | Failed | Skipped | Deferred | Blocked
   status           TEXT    NOT NULL DEFAULT 'Skipped',
@@ -78,6 +91,11 @@ CREATE TABLE IF NOT EXISTS test_cases (
 
   -- Enum (app-enforced). Allowed: Manual | Automated
   type             TEXT    NOT NULL DEFAULT 'Manual',
+
+  -- Enum (app-enforced). Allowed: Positive | Negative
+  -- Positive = verifies correct behavior with valid input/conditions.
+  -- Negative = verifies graceful handling of invalid input/error conditions.
+  test_nature      TEXT    NOT NULL DEFAULT 'Positive',
 
   preconditions    TEXT    DEFAULT '',
   test_data        TEXT    DEFAULT '',
@@ -99,6 +117,7 @@ CREATE TABLE IF NOT EXISTS test_cases (
 
 -- Indexes supporting the common filter columns.
 CREATE INDEX IF NOT EXISTS idx_tc_area     ON test_cases(area);
+CREATE INDEX IF NOT EXISTS idx_tc_category ON test_cases(category);
 CREATE INDEX IF NOT EXISTS idx_tc_status   ON test_cases(status);
 CREATE INDEX IF NOT EXISTS idx_tc_priority ON test_cases(priority);
 CREATE INDEX IF NOT EXISTS idx_tc_assignee ON test_cases(assignee_email);

@@ -4,7 +4,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 
 import { PORT, ROOT_DIR, USERS } from './config.js';
-import { STATUSES, PRIORITIES, TYPES } from './constants.js';
+import { STATUSES, PRIORITIES, TYPES, TEST_NATURES } from './constants.js';
 import {
   verifyCredentials,
   createSession,
@@ -20,6 +20,7 @@ import {
   setPinned,
   deleteTestCase,
   listAreas,
+  listCategoriesByArea,
   listUsers,
   ConflictError,
   ValidationError,
@@ -72,7 +73,9 @@ api.get('/meta', requireAuth, (req, res) => {
     statuses: STATUSES,
     priorities: PRIORITIES,
     types: TYPES,
+    testNatures: TEST_NATURES,
     areas: listAreas(),
+    categoriesByArea: listCategoriesByArea(),
     users: listUsers(),
   });
 });

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { StatusBadge, PriorityBadge, TypeBadge } from './badges.jsx';
+import { StatusBadge, PriorityBadge, TypeBadge, NatureBadge } from './badges.jsx';
 
 const PRIORITY_RANK = { Critical: 0, High: 1, Medium: 2, Low: 3 };
 
@@ -14,13 +14,15 @@ function applyFilters(testCases, filters, meta) {
   const q = filters.search.trim().toLowerCase();
   return testCases.filter((t) => {
     if (filters.area && t.area !== filters.area) return false;
+    if (filters.category && t.category !== filters.category) return false;
     if (filters.status && t.status !== filters.status) return false;
     if (filters.priority && t.priority !== filters.priority) return false;
     if (filters.assignee && t.assigneeEmail !== filters.assignee) return false;
     if (filters.type && t.type !== filters.type) return false;
+    if (filters.testNature && t.testNature !== filters.testNature) return false;
     if (q) {
       const assignee = userName(meta, t.assigneeEmail).toLowerCase();
-      const haystack = [t.tcId, t.title, t.area, assignee]
+      const haystack = [t.tcId, t.title, t.area, t.category, assignee]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -120,10 +122,11 @@ export default function TestCaseTable({
             <th className="col-pin" title="Pinned"></th>
             <SortHeader label="TC ID" sortKey="tcId" sort={sort} setSort={setSort} className="col-id" />
             <SortHeader label="Title" sortKey="title" sort={sort} setSort={setSort} className="col-title" />
-            <SortHeader label="Area" sortKey="area" sort={sort} setSort={setSort} className="col-area" />
+            <SortHeader label="Area / Category" sortKey="area" sort={sort} setSort={setSort} className="col-area" />
             <SortHeader label="Status" sortKey="status" sort={sort} setSort={setSort} className="col-status" />
             <SortHeader label="Priority" sortKey="priority" sort={sort} setSort={setSort} className="col-priority" />
             <SortHeader label="Type" sortKey="type" sort={sort} setSort={setSort} className="col-type" />
+            <SortHeader label="Nature" sortKey="testNature" sort={sort} setSort={setSort} className="col-nature" />
             <SortHeader label="Assignee" sortKey="assignee" sort={sort} setSort={setSort} className="col-assignee" />
           </tr>
         </thead>
@@ -149,7 +152,16 @@ export default function TestCaseTable({
               <td className="col-id mono">{t.tcId}</td>
               <td className="col-title">{t.title}</td>
               <td className="col-area">
-                {t.area ? <span className="area-tag">{t.area}</span> : '—'}
+                {t.area ? (
+                  <span className="area-cell">
+                    <span className="area-tag">{t.area}</span>
+                    {t.category && (
+                      <span className="category-tag">{t.category}</span>
+                    )}
+                  </span>
+                ) : (
+                  '—'
+                )}
               </td>
               <td className="col-status">
                 <StatusBadge status={t.status} />
@@ -159,6 +171,9 @@ export default function TestCaseTable({
               </td>
               <td className="col-type">
                 <TypeBadge type={t.type} />
+              </td>
+              <td className="col-nature">
+                <NatureBadge nature={t.testNature} />
               </td>
               <td className="col-assignee">{userName(meta, t.assigneeEmail)}</td>
             </tr>

@@ -300,6 +300,9 @@ body {
 .col-type {
   width: 110px;
 }
+.col-nature {
+  width: 110px;
+}
 .col-assignee {
   width: 130px;
 }
@@ -331,6 +334,22 @@ body {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
+}
+.area-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+}
+.category-tag {
+  display: inline-block;
+  color: #64748b;
+  font-size: 11.5px;
+  padding-left: 2px;
+}
+.category-tag::before {
+  content: '↳ ';
+  color: #b6bec9;
 }
 
 .table-empty {
@@ -398,6 +417,15 @@ body {
 .type-badge[data-type='Manual'] {
   background: #eef1f4;
   color: #5b6573;
+}
+
+.nature-badge[data-nature='Positive'] {
+  background: #e7f6ec;
+  color: #1a7f37;
+}
+.nature-badge[data-nature='Negative'] {
+  background: #fdeaea;
+  color: #c62828;
 }
 
 /* ── Login ────────────────────────────────────────────────────────────────*/

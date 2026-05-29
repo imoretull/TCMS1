@@ -14,21 +14,29 @@ and a single-file database.
 ## Features
 
 - **Table-first view** of all test cases with sticky headers and clean density.
-- **Search, filter, and sort** by TC ID, title, area, status, priority,
-  assignee, and type (manual/automated).
+- **Search, filter, and sort** by TC ID, title, area, category, status,
+  priority, assignee, type (manual/automated), and test nature
+  (positive/negative).
+- **Area → Category hierarchy** — group cases by a broad area (e.g. Checkout)
+  and a sub-category within it (e.g. Discount). Both are user-managed: add a new
+  area or category on the fly while editing; category choices are scoped to the
+  selected area.
+- **Positive / Negative** — mark each case's test nature (verifying correct
+  behavior vs. graceful handling of invalid input), shown as a badge and
+  filterable.
 - **Pin to top** — flag urgent cases so they surface for the whole team.
 - **Full CRUD** with a slide-in detail/edit panel (progressive disclosure of
   all fields — the table shows the essentials).
 - **Edit-locking / conflict detection** — optimistic locking via `updated_at`.
   If someone changed a case while you were editing, you get a clear
   "changed since you opened it" prompt instead of silently clobbering them.
-- **User-managed areas** — add a new area on the fly while editing.
 - **Lightweight identity** — pick your name, enter a PIN. Edits and assignees
   are attributed to you.
 - **Audit fields** — created/updated by whom and when.
 
-Pre-seeded with **Amazon-style demo data** (Cart, Checkout, Search, Account,
-Payments) and **10 fake QA users**.
+Pre-seeded with **Amazon-style demo data** — 45 cases across 5 areas (Cart,
+Checkout, Search, Account, Payments) with ~32 categories and a mix of positive
+and negative cases — plus **10 fake QA users**.
 
 ---
 

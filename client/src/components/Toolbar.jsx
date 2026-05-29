@@ -12,6 +12,19 @@ export default function Toolbar({
   const set = (key) => (e) =>
     setFilters((f) => ({ ...f, [key]: e.target.value }));
 
+  // Changing the area resets the category (categories are scoped to an area).
+  const setArea = (e) =>
+    setFilters((f) => ({ ...f, area: e.target.value, category: '' }));
+
+  // Category choices: scoped to the selected area, or the full union if no
+  // area is chosen.
+  const byArea = meta?.categoriesByArea || {};
+  const categoryOptions = filters.area
+    ? byArea[filters.area] || []
+    : [...new Set(Object.values(byArea).flat())].sort((a, b) =>
+        a.localeCompare(b)
+      );
+
   const hasActiveFilters =
     Object.entries(filters).some(([, v]) => v && v !== '');
 
@@ -28,11 +41,24 @@ export default function Toolbar({
           />
         </div>
 
-        <select value={filters.area} onChange={set('area')} className="filter">
+        <select value={filters.area} onChange={setArea} className="filter">
           <option value="">All areas</option>
           {meta?.areas?.map((a) => (
             <option key={a} value={a}>
               {a}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.category}
+          onChange={set('category')}
+          className="filter"
+        >
+          <option value="">All categories</option>
+          {categoryOptions.map((c) => (
+            <option key={c} value={c}>
+              {c}
             </option>
           ))}
         </select>
@@ -69,6 +95,19 @@ export default function Toolbar({
           {meta?.types?.map((t) => (
             <option key={t} value={t}>
               {t}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.testNature}
+          onChange={set('testNature')}
+          className="filter"
+        >
+          <option value="">All natures</option>
+          {meta?.testNatures?.map((n) => (
+            <option key={n} value={n}>
+              {n}
             </option>
           ))}
         </select>

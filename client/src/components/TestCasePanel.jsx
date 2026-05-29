@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { StatusBadge, PriorityBadge, TypeBadge } from './badges.jsx';
+import { StatusBadge, PriorityBadge, TypeBadge, NatureBadge } from './badges.jsx';
 
 const BLANK = {
   title: '',
   area: '',
+  category: '',
   status: 'Skipped',
   priority: 'Medium',
   assigneeEmail: '',
   type: 'Manual',
+  testNature: 'Positive',
   preconditions: '',
   testData: '',
   testSteps: '',
@@ -49,8 +51,9 @@ export default function TestCasePanel({
   );
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState(null);
-  // "addingArea" lets the user type a brand-new area inline.
+  // "addingArea"/"addingCategory" let the user type a brand-new value inline.
   const [addingArea, setAddingArea] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
 
   // Keep the form in sync if the underlying testCase changes (e.g. after save).
   useEffect(() => {
@@ -75,10 +78,12 @@ export default function TestCasePanel({
     const payload = {
       title: form.title,
       area: form.area,
+      category: form.category,
       status: form.status,
       priority: form.priority,
       assigneeEmail: form.assigneeEmail,
       type: form.type,
+      testNature: form.testNature,
       preconditions: form.preconditions,
       testData: form.testData,
       testSteps: form.testSteps,
@@ -155,6 +160,8 @@ export default function TestCasePanel({
               meta={meta}
               addingArea={addingArea}
               setAddingArea={setAddingArea}
+              addingCategory={addingCategory}
+              setAddingCategory={setAddingCategory}
             />
           ) : (
             <ViewBody testCase={testCase} meta={meta} />
@@ -216,9 +223,13 @@ function ViewBody({ testCase, meta }) {
 
       <div className="meta-grid">
         <Meta label="Area">{t.area ? <span className="area-tag">{t.area}</span> : '—'}</Meta>
+        <Meta label="Category">
+          {t.category ? <span className="category-tag">{t.category}</span> : '—'}
+        </Meta>
         <Meta label="Status"><StatusBadge status={t.status} /></Meta>
         <Meta label="Priority"><PriorityBadge priority={t.priority} /></Meta>
         <Meta label="Type"><TypeBadge type={t.type} /></Meta>
+        <Meta label="Nature"><NatureBadge nature={t.testNature} /></Meta>
         <Meta label="Assignee">{userName(meta, t.assigneeEmail)}</Meta>
         <Meta label="Pinned">{t.pinned ? '★ Yes' : 'No'}</Meta>
       </div>
@@ -261,7 +272,20 @@ function Section({ title, text }) {
 
 // ── Edit mode ────────────────────────────────────────────────────────────────
 
-function EditForm({ form, set, setForm, meta, addingArea, setAddingArea }) {
+function EditForm({
+  form,
+  set,
+  setForm,
+  meta,
+  addingArea,
+  setAddingArea,
+  addingCategory,
+  setAddingCategory,
+}) {
+  // Categories scoped to the currently-selected area (Area → Category).
+  const categoriesForArea =
+    (form.area && meta?.categoriesByArea?.[form.area]) || [];
+
   return (
     <div className="edit-form">
       <label className="field">
@@ -297,7 +321,15 @@ function EditForm({ form, set, setForm, meta, addingArea, setAddingArea }) {
             </div>
           ) : (
             <div className="inline-add">
-              <select value={form.area} onChange={set('area')}>
+              <select
+                value={form.area}
+                onChange={(e) => {
+                  // Changing area clears the category (it belongs to an area).
+                  const area = e.target.value;
+                  setForm((f) => ({ ...f, area, category: '' }));
+                  setAddingCategory(false);
+                }}
+              >
                 <option value="">— None —</option>
                 {meta?.areas?.map((a) => (
                   <option key={a} value={a}>
@@ -309,7 +341,7 @@ function EditForm({ form, set, setForm, meta, addingArea, setAddingArea }) {
                 type="button"
                 className="btn btn-small btn-ghost"
                 onClick={() => {
-                  setForm((f) => ({ ...f, area: '' }));
+                  setForm((f) => ({ ...f, area: '', category: '' }));
                   setAddingArea(true);
                 }}
               >
@@ -320,12 +352,75 @@ function EditForm({ form, set, setForm, meta, addingArea, setAddingArea }) {
         </label>
 
         <label className="field">
+          <span>Category</span>
+          {addingCategory ? (
+            <div className="inline-add">
+              <input
+                type="text"
+                value={form.category}
+                onChange={set('category')}
+                placeholder="New category name"
+                disabled={!form.area}
+                autoFocus
+              />
+              <button
+                type="button"
+                className="btn btn-small btn-ghost"
+                onClick={() => setAddingCategory(false)}
+              >
+                Pick existing
+              </button>
+            </div>
+          ) : (
+            <div className="inline-add">
+              <select
+                value={form.category}
+                onChange={set('category')}
+                disabled={!form.area}
+                title={!form.area ? 'Pick an area first' : undefined}
+              >
+                <option value="">— None —</option>
+                {categoriesForArea.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn btn-small btn-ghost"
+                disabled={!form.area}
+                onClick={() => {
+                  setForm((f) => ({ ...f, category: '' }));
+                  setAddingCategory(true);
+                }}
+              >
+                + New
+              </button>
+            </div>
+          )}
+        </label>
+      </div>
+
+      <div className="field-row">
+        <label className="field">
           <span>Assignee</span>
           <select value={form.assigneeEmail || ''} onChange={set('assigneeEmail')}>
             <option value="">— Unassigned —</option>
             {meta?.users?.map((u) => (
               <option key={u.email} value={u.email}>
                 {u.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="field">
+          <span>Test Nature</span>
+          <select value={form.testNature} onChange={set('testNature')}>
+            {meta?.testNatures?.map((n) => (
+              <option key={n} value={n}>
+                {n}
               </option>
             ))}
           </select>

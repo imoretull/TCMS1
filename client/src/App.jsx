@@ -8,10 +8,12 @@ import Toolbar from './components/Toolbar.jsx';
 const EMPTY_FILTERS = {
   search: '',
   area: '',
+  category: '',
   status: '',
   priority: '',
   assignee: '',
   type: '',
+  testNature: '',
 };
 
 export default function App() {

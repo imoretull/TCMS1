@@ -13,8 +13,8 @@ import { listUsers } from './testCases.js';
 const RESET = process.argv.includes('--reset');
 
 if (RESET) {
-  console.log('Resetting test cases and areas...');
-  db.exec(`DELETE FROM test_cases; DELETE FROM areas;`);
+  console.log('Resetting test cases, areas, and categories...');
+  db.exec(`DELETE FROM test_cases; DELETE FROM areas; DELETE FROM categories;`);
   db.prepare(`UPDATE counters SET value = 1000 WHERE name = 'tc_id'`).run();
 }
 
@@ -45,6 +45,8 @@ const cases = [
   {
     title: 'Add a single item to the cart from the product page',
     area: 'Cart',
+    category: 'Add to Cart',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'High',
     type: 'Automated',
@@ -60,6 +62,8 @@ const cases = [
   {
     title: 'Update item quantity in the cart',
     area: 'Cart',
+    category: 'Quantity',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Medium',
     type: 'Manual',
@@ -72,6 +76,8 @@ const cases = [
   {
     title: 'Remove an item from the cart',
     area: 'Cart',
+    category: 'Add to Cart',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Medium',
     type: 'Automated',
@@ -82,6 +88,8 @@ const cases = [
   {
     title: 'Save an item for later',
     area: 'Cart',
+    category: 'Saved for Later',
+    testNature: 'Positive',
     status: 'Skipped',
     priority: 'Low',
     type: 'Manual',
@@ -93,6 +101,8 @@ const cases = [
   {
     title: 'Cart persists across sessions for a signed-in user',
     area: 'Cart',
+    category: 'Persistence',
+    testNature: 'Positive',
     status: 'Failed',
     priority: 'High',
     type: 'Manual',
@@ -106,6 +116,8 @@ const cases = [
   {
     title: 'Cart shows correct subtotal with mixed quantities',
     area: 'Cart',
+    category: 'Totals',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Medium',
     type: 'Automated',
@@ -115,6 +127,8 @@ const cases = [
   {
     title: 'Empty cart displays recommended products',
     area: 'Cart',
+    category: 'Recommendations',
+    testNature: 'Positive',
     status: 'Deferred',
     priority: 'Low',
     type: 'Manual',
@@ -126,6 +140,8 @@ const cases = [
   {
     title: 'Complete checkout with a saved credit card',
     area: 'Checkout',
+    category: 'Payment',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Critical',
     type: 'Automated',
@@ -141,6 +157,8 @@ const cases = [
   {
     title: 'Apply a valid promo code at checkout',
     area: 'Checkout',
+    category: 'Discount',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'High',
     type: 'Manual',
@@ -152,6 +170,8 @@ const cases = [
   {
     title: 'Reject an expired promo code at checkout',
     area: 'Checkout',
+    category: 'Discount',
+    testNature: 'Negative',
     status: 'Passed',
     priority: 'Medium',
     type: 'Manual',
@@ -161,6 +181,8 @@ const cases = [
   {
     title: 'Select a different shipping speed',
     area: 'Checkout',
+    category: 'Shipping',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Medium',
     type: 'Manual',
@@ -171,6 +193,8 @@ const cases = [
   {
     title: 'Checkout blocked when no shipping address is set',
     area: 'Checkout',
+    category: 'Address',
+    testNature: 'Negative',
     status: 'Blocked',
     priority: 'High',
     type: 'Manual',
@@ -183,6 +207,8 @@ const cases = [
   {
     title: 'Place an order using a gift card balance',
     area: 'Checkout',
+    category: 'Gift Card',
+    testNature: 'Positive',
     status: 'Skipped',
     priority: 'Low',
     type: 'Manual',
@@ -193,6 +219,8 @@ const cases = [
   {
     title: 'Order confirmation page shows correct itemized totals',
     area: 'Checkout',
+    category: 'Order Summary',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'High',
     type: 'Automated',
@@ -204,6 +232,8 @@ const cases = [
   {
     title: 'Search returns relevant results for a product keyword',
     area: 'Search',
+    category: 'Relevance',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'High',
     type: 'Automated',
@@ -214,6 +244,8 @@ const cases = [
   {
     title: 'Search autocomplete suggests popular queries',
     area: 'Search',
+    category: 'Autocomplete',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Medium',
     type: 'Manual',
@@ -224,6 +256,8 @@ const cases = [
   {
     title: 'Filter search results by price range',
     area: 'Search',
+    category: 'Filtering',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Medium',
     type: 'Manual',
@@ -234,6 +268,8 @@ const cases = [
   {
     title: 'Sort search results by customer rating',
     area: 'Search',
+    category: 'Sorting',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Low',
     type: 'Manual',
@@ -242,6 +278,8 @@ const cases = [
   {
     title: 'Search with no results shows a helpful empty state',
     area: 'Search',
+    category: 'Empty State',
+    testNature: 'Negative',
     status: 'Failed',
     priority: 'Medium',
     type: 'Manual',
@@ -254,6 +292,8 @@ const cases = [
   {
     title: 'Search respects department/category scope',
     area: 'Search',
+    category: 'Scope',
+    testNature: 'Positive',
     status: 'Skipped',
     priority: 'Low',
     type: 'Manual',
@@ -264,6 +304,8 @@ const cases = [
   {
     title: 'Voice search returns results (Alexa app)',
     area: 'Search',
+    category: 'Voice',
+    testNature: 'Positive',
     status: 'Deferred',
     priority: 'Low',
     type: 'Manual',
@@ -275,6 +317,8 @@ const cases = [
   {
     title: 'Sign in with valid credentials',
     area: 'Account',
+    category: 'Sign In',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Critical',
     type: 'Automated',
@@ -286,6 +330,8 @@ const cases = [
   {
     title: 'Sign in fails with an incorrect password',
     area: 'Account',
+    category: 'Sign In',
+    testNature: 'Negative',
     status: 'Passed',
     priority: 'High',
     type: 'Automated',
@@ -294,6 +340,8 @@ const cases = [
   {
     title: 'Update the default shipping address',
     area: 'Account',
+    category: 'Address',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Medium',
     type: 'Manual',
@@ -304,6 +352,8 @@ const cases = [
   {
     title: 'Change account password',
     area: 'Account',
+    category: 'Password',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'High',
     type: 'Manual',
@@ -313,6 +363,8 @@ const cases = [
   {
     title: 'View order history',
     area: 'Account',
+    category: 'Orders',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Medium',
     type: 'Manual',
@@ -321,6 +373,8 @@ const cases = [
   {
     title: 'Enable two-step verification',
     area: 'Account',
+    category: 'Security',
+    testNature: 'Positive',
     status: 'Skipped',
     priority: 'Medium',
     type: 'Manual',
@@ -330,6 +384,8 @@ const cases = [
   {
     title: 'Account lockout after repeated failed sign-ins',
     area: 'Account',
+    category: 'Security',
+    testNature: 'Negative',
     status: 'Blocked',
     priority: 'High',
     type: 'Manual',
@@ -341,6 +397,8 @@ const cases = [
   {
     title: 'Manage Prime membership settings',
     area: 'Account',
+    category: 'Membership',
+    testNature: 'Positive',
     status: 'Deferred',
     priority: 'Low',
     type: 'Manual',
@@ -351,6 +409,8 @@ const cases = [
   {
     title: 'Add a new credit card to the wallet',
     area: 'Payments',
+    category: 'Wallet',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'High',
     type: 'Manual',
@@ -362,6 +422,8 @@ const cases = [
   {
     title: 'Decline an invalid card number',
     area: 'Payments',
+    category: 'Card Validation',
+    testNature: 'Negative',
     status: 'Passed',
     priority: 'High',
     type: 'Automated',
@@ -371,6 +433,8 @@ const cases = [
   {
     title: 'Set a default payment method',
     area: 'Payments',
+    category: 'Default Method',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Medium',
     type: 'Manual',
@@ -379,6 +443,8 @@ const cases = [
   {
     title: 'Remove a saved payment method',
     area: 'Payments',
+    category: 'Wallet',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Low',
     type: 'Manual',
@@ -387,6 +453,8 @@ const cases = [
   {
     title: 'Payment fails gracefully on bank decline',
     area: 'Payments',
+    category: 'Decline Handling',
+    testNature: 'Negative',
     status: 'Failed',
     priority: 'Critical',
     type: 'Manual',
@@ -400,6 +468,8 @@ const cases = [
   {
     title: 'Process a refund to the original payment method',
     area: 'Payments',
+    category: 'Refunds',
+    testNature: 'Positive',
     status: 'Skipped',
     priority: 'Medium',
     type: 'Manual',
@@ -408,6 +478,8 @@ const cases = [
   {
     title: 'Pay using Amazon gift card balance only',
     area: 'Payments',
+    category: 'Gift Card',
+    testNature: 'Positive',
     status: 'Passed',
     priority: 'Medium',
     type: 'Manual',
@@ -417,10 +489,118 @@ const cases = [
   {
     title: 'Currency is displayed correctly for the locale',
     area: 'Payments',
+    category: 'Localization',
+    testNature: 'Positive',
     status: 'Deferred',
     priority: 'Low',
     type: 'Manual',
     expectedResult: 'Prices show the correct currency symbol and formatting per locale.',
+  },
+
+  // ── Additional negative test cases (error / invalid-input handling) ──────────
+  {
+    title: 'Adding an out-of-stock item to the cart is rejected',
+    area: 'Cart',
+    category: 'Add to Cart',
+    testNature: 'Negative',
+    status: 'Passed',
+    priority: 'High',
+    type: 'Manual',
+    preconditions: 'Product is marked out of stock.',
+    testSteps:
+      '1. Open an out-of-stock product page.\n2. Attempt to click "Add to Cart".',
+    expectedResult:
+      'The "Add to Cart" button is disabled and a "Currently unavailable" notice is shown; the cart count does not change.',
+  },
+  {
+    title: 'Setting cart quantity to zero or a negative number is blocked',
+    area: 'Cart',
+    category: 'Quantity',
+    testNature: 'Negative',
+    status: 'Failed',
+    priority: 'Medium',
+    type: 'Manual',
+    testData: 'Quantity input: 0, then -1',
+    testSteps:
+      '1. Open the cart.\n2. Type 0 into the quantity field.\n3. Type -1 into the quantity field.',
+    expectedResult:
+      'Invalid quantities are rejected with a validation message; quantity reverts to the last valid value.',
+    comments: 'FAILS — entering 0 currently removes the item without confirmation. Bug AMZ-4815.',
+  },
+  {
+    title: 'Checkout rejects an invalid promo code',
+    area: 'Checkout',
+    category: 'Discount',
+    testNature: 'Negative',
+    status: 'Passed',
+    priority: 'Medium',
+    type: 'Automated',
+    testData: 'Promo code: NOTAREALCODE',
+    testSteps: '1. At checkout, enter NOTAREALCODE.\n2. Click "Apply".',
+    expectedResult: 'An inline error "Invalid code" is shown and the order total is unchanged.',
+  },
+  {
+    title: 'Checkout rejects an incomplete shipping address',
+    area: 'Checkout',
+    category: 'Address',
+    testNature: 'Negative',
+    status: 'Passed',
+    priority: 'High',
+    type: 'Manual',
+    testData: 'Address missing ZIP/postal code.',
+    testSteps:
+      '1. Enter an address with no postal code.\n2. Try to continue to payment.',
+    expectedResult:
+      'A field-level error highlights the missing postal code and prevents continuing.',
+  },
+  {
+    title: 'Search input rejects an overly long query string',
+    area: 'Search',
+    category: 'Relevance',
+    testNature: 'Negative',
+    status: 'Skipped',
+    priority: 'Low',
+    type: 'Manual',
+    testData: 'Query: a 5,000-character string',
+    expectedResult:
+      'The query is truncated to the max length or rejected gracefully; no server error (500) occurs.',
+  },
+  {
+    title: 'Sign up is rejected for a malformed email address',
+    area: 'Account',
+    category: 'Sign In',
+    testNature: 'Negative',
+    status: 'Passed',
+    priority: 'Medium',
+    type: 'Automated',
+    testData: 'Email: "not-an-email"',
+    testSteps: '1. Open create account.\n2. Enter "not-an-email".\n3. Submit.',
+    expectedResult: 'An inline error "Enter a valid email" is shown; the account is not created.',
+  },
+  {
+    title: 'Adding an expired credit card is rejected',
+    area: 'Payments',
+    category: 'Card Validation',
+    testNature: 'Negative',
+    status: 'Passed',
+    priority: 'High',
+    type: 'Manual',
+    testData: 'Card with expiry 01/2020.',
+    testSteps: '1. Go to Payments > Add a card.\n2. Enter a card expiring 01/2020.\n3. Save.',
+    expectedResult: 'An error "This card has expired" is shown and the card is not saved.',
+  },
+  {
+    title: 'Refund greater than the original charge is rejected',
+    area: 'Payments',
+    category: 'Refunds',
+    testNature: 'Negative',
+    status: 'Blocked',
+    priority: 'High',
+    type: 'Manual',
+    testData: 'Original charge $42.50; attempted refund $50.00.',
+    expectedResult:
+      'The over-refund is blocked with a clear error; no money is moved.',
+    comments: 'Blocked — refund sandbox returns 500 for over-amount in test env. Ticket OPS-241.',
   },
 ];
 
@@ -432,6 +612,14 @@ transaction(() => {
   }
 });
 
-console.log(`Seeded ${created} test cases across 5 areas.`);
+const areaCount = db.prepare(`SELECT COUNT(*) n FROM areas`).get().n;
+const catCount = db.prepare(`SELECT COUNT(*) n FROM categories`).get().n;
+const negCount = db
+  .prepare(`SELECT COUNT(*) n FROM test_cases WHERE test_nature = 'Negative'`)
+  .get().n;
+console.log(
+  `Seeded ${created} test cases across ${areaCount} areas and ${catCount} categories ` +
+    `(${negCount} negative, ${created - negCount} positive).`
+);
 console.log(`Users available for sign-in: ${users.length}`);
 process.exit(0);

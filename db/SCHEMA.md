@@ -1,6 +1,6 @@
 # TCMS Database Contract
 
-**Schema version: 1**
+**Schema version: 2**
 
 This document is the **contract** for the TCMS database. The TCMS web app is the
 *reference implementation* of these rules, but the database file is standalone:
@@ -42,16 +42,19 @@ See [`schema.sql`](./schema.sql) for exact column types and defaults. Summary:
 | `schema_meta` | `key/value`; holds `schema_version` so apps can check compatibility.|
 | `users`       | QA users (`email` PK, `name`). Identity for attribution/assignment. |
 | `areas`       | User-managed functional areas (`name` PK).                          |
+| `categories`  | Sub-groups within an area; PK `(area, name)` — see §2.1.            |
 | `counters`    | Sequence backing the public TC-ID (`name` PK, `value`).             |
 | `test_cases`  | The core entity. One row per test case.                             |
 
 ### Relationships (soft / application-enforced)
 
-There are **no hard foreign keys** between `test_cases` and `users`/`areas`, so
-that historical attribution survives a user or area being removed.
+There are **no hard foreign keys** between `test_cases` and
+`users`/`areas`/`categories`, so that historical attribution survives a user,
+area, or category being removed.
 
 - `test_cases.assignee_email`, `created_by`, `updated_by` → `users.email`
 - `test_cases.area` → `areas.name`
+- `(test_cases.area, test_cases.category)` → `categories.(area, name)`
 
 Writers should keep these consistent (see §4).
 
@@ -63,14 +66,36 @@ These are enforced by the application, not the DB. A compliant writer **must**
 only write these values. They are intentionally extensible — to add a value,
 update this contract (and bump the schema version if other apps must know).
 
-| Column                | Allowed values                                           | Default     |
-| --------------------- | -------------------------------------------------------- | ----------- |
-| `test_cases.status`   | `Passed`, `Failed`, `Skipped`, `Deferred`, `Blocked`     | `Skipped`   |
-| `test_cases.priority` | `Critical`, `High`, `Medium`, `Low`                      | `Medium`    |
-| `test_cases.type`     | `Manual`, `Automated`                                    | `Manual`    |
-| `test_cases.pinned`   | `0` (false) or `1` (true)                                | `0`         |
+| Column                   | Allowed values                                        | Default     |
+| ------------------------ | ----------------------------------------------------- | ----------- |
+| `test_cases.status`      | `Passed`, `Failed`, `Skipped`, `Deferred`, `Blocked`  | `Skipped`   |
+| `test_cases.priority`    | `Critical`, `High`, `Medium`, `Low`                   | `Medium`    |
+| `test_cases.type`        | `Manual`, `Automated`                                 | `Manual`    |
+| `test_cases.test_nature` | `Positive`, `Negative`                                | `Positive`  |
+| `test_cases.pinned`      | `0` (false) or `1` (true)                             | `0`         |
 
 `title` must be a non-empty (non-whitespace) string.
+
+**`test_nature`** distinguishes the intent of a test:
+
+- **`Positive`** — verifies the system behaves correctly given *valid* input and
+  expected conditions (the happy path).
+- **`Negative`** — verifies the system handles *invalid* input or error
+  conditions gracefully (rejections, validation, failures).
+
+### 2.1 Area → Category hierarchy
+
+`area` and `category` form a two-level, **user-managed** hierarchy:
+
+- `area` is the broad functional area (e.g. `Checkout`).
+- `category` is a sub-grouping *within* that area (e.g. `Discount`, `Shipping`).
+- A test case may have an `area` with no `category`, but a `category` should
+  always be paired with the `area` it belongs to.
+- The **same category name may appear under different areas** (e.g. both
+  `Cart` and `Checkout` could have a `Promo` category), which is why the
+  `categories` table is keyed on the `(area, name)` pair.
+- There is no fixed list — see §4 for how new areas/categories are created on
+  the fly.
 
 ---
 
@@ -106,8 +131,12 @@ A compliant `INSERT` must:
    string (e.g. `2026-05-29T15:07:39.455Z`).
 4. Set `created_by` = `updated_by` = the acting user's `email`.
 5. If `area` is non-empty and not already in `areas`, insert it:
-   `INSERT OR IGNORE INTO areas (name) VALUES (?)`.
-6. Apply defaults (§2) for any omitted enum/`pinned` fields.
+   `INSERT OR IGNORE INTO areas (name) VALUES (?)`. If `category` is also
+   non-empty, register the pair:
+   `INSERT OR IGNORE INTO categories (area, name) VALUES (?, ?)`. (Only register
+   a category when an area is present — a category without an area is invalid.)
+6. Apply defaults (§2) for any omitted enum/`pinned` fields (`test_nature`
+   defaults to `Positive`).
 
 ### Updating a test case — **optimistic edit-locking (required)**
 
@@ -175,6 +204,9 @@ A plain `DELETE FROM test_cases WHERE id = ?`. No soft-delete in v1.
   `(email lowercased, name)` and keep emails unique.
 - **Areas** are free-form and created on demand (§4, step 5). There is no fixed
   list.
+- **Categories** are sub-groups of an area (§2.1), also created on demand and
+  stored as `(area, name)` pairs. When offering category choices for a given
+  area, query `SELECT name FROM categories WHERE area = ?`.
 
 ---
 
@@ -198,7 +230,7 @@ A plain `DELETE FROM test_cases WHERE id = ?`. No soft-delete in v1.
 
 ## 8. Versioning
 
-`schema_meta.schema_version` is currently **`1`**. Before reading/writing, an
+`schema_meta.schema_version` is currently **`2`**. Before reading/writing, an
 app may check it:
 
 ```sql
@@ -207,3 +239,12 @@ SELECT value FROM schema_meta WHERE key = 'schema_version';
 
 Bump it (here, in `schema.sql`, and in the app) whenever a structural change
 would break apps written against an older version.
+
+### Changelog
+
+- **v2** — Added the `categories` table and `test_cases.category` (Area →
+  Category hierarchy, §2.1) and `test_cases.test_nature` (Positive / Negative).
+  Both new columns are nullable/defaulted, so a v1 reader still works on a v2
+  database (it just ignores the new fields). The reference app auto-migrates a
+  v1 file by adding the columns/table on startup.
+- **v1** — Initial schema.

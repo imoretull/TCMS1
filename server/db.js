@@ -27,8 +27,39 @@ db.exec('PRAGMA foreign_keys = ON');
  * database is already initialized).
  */
 function migrate() {
+  // Order matters: bring an existing (older) test_cases table up to date with
+  // any new COLUMNS *before* applying schema.sql, because schema.sql creates an
+  // index on a newer column (idx_tc_category) which would otherwise fail with
+  // "no such column" on a pre-upgrade database. On a brand-new database
+  // test_cases doesn't exist yet, so addMissingColumns is a no-op and schema.sql
+  // creates everything from scratch.
+  addMissingColumns();
   const schemaSql = fs.readFileSync(SCHEMA_PATH, 'utf8');
   db.exec(schemaSql);
+}
+
+/**
+ * Lightweight forward-migration for databases created by an older schema
+ * version. `schema.sql` uses CREATE TABLE IF NOT EXISTS, which adds new tables
+ * (e.g. `categories`) but cannot add new COLUMNS to an existing table. Here we
+ * add any columns introduced in later versions if they are missing, so an
+ * existing v1 file is upgraded in place without data loss. No-op when the
+ * test_cases table doesn't exist yet (fresh database).
+ */
+function addMissingColumns() {
+  const info = db.prepare(`PRAGMA table_info(test_cases)`).all();
+  if (info.length === 0) return; // fresh DB — schema.sql will create the table
+  const cols = new Set(info.map((c) => c.name));
+  const additions = [
+    ['category', `ALTER TABLE test_cases ADD COLUMN category TEXT`],
+    [
+      'test_nature',
+      `ALTER TABLE test_cases ADD COLUMN test_nature TEXT NOT NULL DEFAULT 'Positive'`,
+    ],
+  ];
+  for (const [name, sql] of additions) {
+    if (!cols.has(name)) db.exec(sql);
+  }
 }
 
 /**

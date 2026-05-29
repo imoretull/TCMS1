@@ -3,9 +3,11 @@ import {
   STATUSES,
   PRIORITIES,
   TYPES,
+  TEST_NATURES,
   DEFAULT_STATUS,
   DEFAULT_PRIORITY,
   DEFAULT_TYPE,
+  DEFAULT_TEST_NATURE,
 } from './constants.js';
 
 /** Error thrown when an update is rejected because the record changed. */
@@ -37,10 +39,12 @@ function rowToApi(row) {
     tcId: row.tc_id,
     title: row.title,
     area: row.area,
+    category: row.category,
     status: row.status,
     priority: row.priority,
     assigneeEmail: row.assignee_email,
     type: row.type,
+    testNature: row.test_nature,
     preconditions: row.preconditions,
     testData: row.test_data,
     testSteps: row.test_steps,
@@ -69,7 +73,23 @@ function ensureArea(area) {
   return trimmed;
 }
 
-function validateEnums({ status, priority, type }) {
+/**
+ * Register a category under its parent area (the Area → Category hierarchy).
+ * A category only makes sense paired with an area, so we ignore a category
+ * when no area is present. Returns the trimmed category (or null).
+ */
+function ensureCategory(area, category) {
+  const trimmedCat = (category || '').trim();
+  if (!trimmedCat) return null;
+  const trimmedArea = (area || '').trim();
+  if (!trimmedArea) return null; // category without an area is invalid
+  db.prepare(
+    `INSERT OR IGNORE INTO categories (area, name) VALUES (?, ?)`
+  ).run(trimmedArea, trimmedCat);
+  return trimmedCat;
+}
+
+function validateEnums({ status, priority, type, testNature }) {
   if (status && !STATUSES.includes(status)) {
     throw new ValidationError(`Invalid status: ${status}`);
   }
@@ -78,6 +98,9 @@ function validateEnums({ status, priority, type }) {
   }
   if (type && !TYPES.includes(type)) {
     throw new ValidationError(`Invalid type: ${type}`);
+  }
+  if (testNature && !TEST_NATURES.includes(testNature)) {
+    throw new ValidationError(`Invalid test nature: ${testNature}`);
   }
 }
 
@@ -105,16 +128,17 @@ export function createTestCase(input, user) {
 
   const now = nowIso();
   const area = ensureArea(input.area);
+  const category = ensureCategory(area, input.category);
   const tcId = nextTcId();
 
   const info = db
     .prepare(
       `INSERT INTO test_cases (
-        tc_id, title, area, status, priority, assignee_email, type,
+        tc_id, title, area, category, status, priority, assignee_email, type, test_nature,
         preconditions, test_data, test_steps, expected_result, comments, pinned,
         created_at, created_by, updated_at, updated_by
       ) VALUES (
-        @tc_id, @title, @area, @status, @priority, @assignee_email, @type,
+        @tc_id, @title, @area, @category, @status, @priority, @assignee_email, @type, @test_nature,
         @preconditions, @test_data, @test_steps, @expected_result, @comments, @pinned,
         @created_at, @created_by, @updated_at, @updated_by
       )`
@@ -123,10 +147,12 @@ export function createTestCase(input, user) {
       tc_id: tcId,
       title: input.title.trim(),
       area,
+      category,
       status: input.status || DEFAULT_STATUS,
       priority: input.priority || DEFAULT_PRIORITY,
       assignee_email: input.assigneeEmail || null,
       type: input.type || DEFAULT_TYPE,
+      test_nature: input.testNature || DEFAULT_TEST_NATURE,
       preconditions: input.preconditions || '',
       test_data: input.testData || '',
       test_steps: input.testSteps || '',
@@ -165,12 +191,24 @@ export function updateTestCase(id, input, user) {
 
   const area =
     input.area !== undefined ? ensureArea(input.area) : existing.area;
+  // Resolve category against the (possibly new) area. If the area changed but
+  // the caller didn't send a category, drop the stale category rather than
+  // leaving one that belongs to the old area.
+  let category;
+  if (input.category !== undefined) {
+    category = ensureCategory(area, input.category);
+  } else if (input.area !== undefined && area !== existing.area) {
+    category = null;
+  } else {
+    category = existing.category;
+  }
   const now = nowIso();
 
   // Coalesce: only overwrite fields the caller actually provided.
   const next = {
     title: input.title !== undefined ? String(input.title).trim() : existing.title,
     area,
+    category,
     status: input.status ?? existing.status,
     priority: input.priority ?? existing.priority,
     assignee_email:
@@ -178,6 +216,7 @@ export function updateTestCase(id, input, user) {
         ? input.assigneeEmail || null
         : existing.assignee_email,
     type: input.type ?? existing.type,
+    test_nature: input.testNature ?? existing.test_nature,
     preconditions: input.preconditions ?? existing.preconditions,
     test_data: input.testData ?? existing.test_data,
     test_steps: input.testSteps ?? existing.test_steps,
@@ -192,8 +231,9 @@ export function updateTestCase(id, input, user) {
 
   db.prepare(
     `UPDATE test_cases SET
-      title = @title, area = @area, status = @status, priority = @priority,
-      assignee_email = @assignee_email, type = @type,
+      title = @title, area = @area, category = @category,
+      status = @status, priority = @priority,
+      assignee_email = @assignee_email, type = @type, test_nature = @test_nature,
       preconditions = @preconditions, test_data = @test_data,
       test_steps = @test_steps, expected_result = @expected_result,
       comments = @comments, pinned = @pinned,
@@ -229,6 +269,24 @@ export function listAreas() {
     .prepare(`SELECT name FROM areas ORDER BY name COLLATE NOCASE`)
     .all()
     .map((r) => r.name);
+}
+
+/**
+ * Return categories grouped by their parent area, e.g.
+ *   { Checkout: ['Discount', 'Shipping'], Cart: ['Quantity'] }
+ * so the UI can show area-scoped category choices.
+ */
+export function listCategoriesByArea() {
+  const rows = db
+    .prepare(
+      `SELECT area, name FROM categories ORDER BY area COLLATE NOCASE, name COLLATE NOCASE`
+    )
+    .all();
+  const byArea = {};
+  for (const { area, name } of rows) {
+    (byArea[area] ||= []).push(name);
+  }
+  return byArea;
 }
 
 export function listUsers() {

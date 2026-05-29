@@ -24,3 +24,14 @@ export function TypeBadge({ type }) {
     </span>
   );
 }
+
+export function NatureBadge({ nature }) {
+  if (!nature) return null;
+  // Short glyph + label so it reads at a glance: + positive, − negative.
+  const mark = nature === 'Negative' ? '−' : '+';
+  return (
+    <span className="badge nature-badge" data-nature={nature}>
+      {mark} {nature}
+    </span>
+  );
+}
