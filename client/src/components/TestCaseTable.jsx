@@ -219,7 +219,7 @@ export default function TestCaseTable({
                 <TypeBadge type={t.type} />
               </td>
               <td className="col-nature">
-                <NatureBadge nature={t.testNature} />
+                <NatureBadge nature={t.testNature} compact />
               </td>
               <td className="col-sprint">
                 {t.sprint ? <span className="sprint-tag">{t.sprint}</span> : '—'}

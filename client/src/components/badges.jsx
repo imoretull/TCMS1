@@ -10,13 +10,21 @@ export function TypeBadge({ type }) {
   );
 }
 
-export function NatureBadge({ nature }) {
+// Positive / Negative test nature. In `compact` mode (used in the table) we
+// show an icon only — ✓ for Positive, ✕ for Negative — to save column width;
+// the full word is in the title tooltip. Elsewhere (detail panel) the label is
+// shown alongside.
+export function NatureBadge({ nature, compact = false }) {
   if (!nature) return null;
-  // Short glyph + label so it reads at a glance: + positive, − negative.
-  const mark = nature === 'Negative' ? '−' : '+';
+  const icon = nature === 'Negative' ? '✕' : '✓';
   return (
-    <span className="badge nature-badge" data-nature={nature}>
-      {mark} {nature}
+    <span
+      className={`badge nature-badge${compact ? ' nature-badge-compact' : ''}`}
+      data-nature={nature}
+      title={nature}
+      aria-label={nature}
+    >
+      {compact ? icon : `${icon} ${nature}`}
     </span>
   );
 }

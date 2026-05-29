@@ -357,7 +357,8 @@ body {
   width: 110px;
 }
 .col-nature {
-  width: 110px;
+  width: 56px;
+  text-align: center;
 }
 .col-sprint {
   width: 80px;
@@ -481,6 +482,18 @@ body {
 .nature-badge[data-nature='Negative'] {
   background: #fdeaea;
   color: #c62828;
+}
+/* Icon-only variant for the table: a compact circular chip. */
+.nature-badge-compact {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 /* Test level (Sanity ⊆ Smoke ⊆ Regression) — warm→cool by breadth. */
