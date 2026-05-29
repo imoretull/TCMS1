@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS schema_meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '4');
+INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '5');
 
 -- ── QA users ───────────────────────────────────────────────────────────────
 -- The authoritative user list is defined in the application's .env
@@ -105,6 +105,19 @@ CREATE TABLE IF NOT EXISTS test_cases (
   -- Sanity). (Labeled "Type" in the UI.)
   test_level       TEXT    NOT NULL DEFAULT 'Regression',
 
+  -- Interface under test. Enum (app-enforced). Allowed: UI | API.
+  -- REQUIRED: every case is exactly one of UI or API (never both, never none).
+  -- (Labeled "Layer" in the UI.) Determines which detail fields apply:
+  -- UI tests use test_steps; API tests use endpoint/http_method/request_body/
+  -- expected_status (below).
+  layer            TEXT    NOT NULL DEFAULT 'UI',
+
+  -- API-only detail fields (blank/NULL for UI tests).
+  endpoint         TEXT    DEFAULT '',                 -- e.g. '/api/cart'
+  http_method      TEXT    DEFAULT '',                 -- GET | POST | PUT | PATCH | DELETE
+  request_body     TEXT    DEFAULT '',                 -- request payload
+  expected_status  TEXT    DEFAULT '',                 -- e.g. '200', '201', '4xx'
+
   -- Enum (app-enforced). Allowed: Positive | Negative
   -- Positive = verifies correct behavior with valid input/conditions.
   -- Negative = verifies graceful handling of invalid input/error conditions.
@@ -136,4 +149,5 @@ CREATE TABLE IF NOT EXISTS test_cases (
 CREATE INDEX IF NOT EXISTS idx_tc_area     ON test_cases(area);
 CREATE INDEX IF NOT EXISTS idx_tc_category ON test_cases(category);
 CREATE INDEX IF NOT EXISTS idx_tc_level    ON test_cases(test_level);
+CREATE INDEX IF NOT EXISTS idx_tc_layer    ON test_cases(layer);
 CREATE INDEX IF NOT EXISTS idx_tc_sprint   ON test_cases(sprint);

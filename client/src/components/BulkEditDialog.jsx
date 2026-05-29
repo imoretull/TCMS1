@@ -7,6 +7,7 @@ import { useState } from 'react';
  */
 export default function BulkEditDialog({ count, meta, onApply, onClose }) {
   const [enabled, setEnabled] = useState({
+    layer: false,
     testLevel: false,
     type: false,
     testNature: false,
@@ -14,6 +15,7 @@ export default function BulkEditDialog({ count, meta, onApply, onClose }) {
     sprint: false,
   });
   const [values, setValues] = useState({
+    layer: meta?.layers?.[0] || 'UI',
     testLevel: meta?.testLevels?.[0] || 'Regression',
     type: meta?.types?.[0] || 'Manual',
     testNature: meta?.testNatures?.[0] || 'Positive',
@@ -33,6 +35,7 @@ export default function BulkEditDialog({ count, meta, onApply, onClose }) {
 
   function apply() {
     const patch = {};
+    if (enabled.layer) patch.layer = values.layer;
     if (enabled.testLevel) patch.testLevel = values.testLevel;
     if (enabled.type) patch.type = values.type;
     if (enabled.testNature) patch.testNature = values.testNature;
@@ -59,6 +62,18 @@ export default function BulkEditDialog({ count, meta, onApply, onClose }) {
             Tick a field to change it on all selected cases. Unticked fields are
             left unchanged.
           </p>
+
+          <BulkField
+            label="Layer"
+            checked={enabled.layer}
+            onToggle={toggle('layer')}
+          >
+            <select value={values.layer} onChange={setVal('layer')} disabled={!enabled.layer}>
+              {meta?.layers?.map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
+          </BulkField>
 
           <BulkField
             label="Type"

@@ -4,7 +4,13 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 
 import { PORT, ROOT_DIR, USERS } from './config.js';
-import { TYPES, TEST_NATURES, TEST_LEVELS } from './constants.js';
+import {
+  TYPES,
+  TEST_NATURES,
+  TEST_LEVELS,
+  LAYERS,
+  HTTP_METHODS,
+} from './constants.js';
 import {
   listDatasets,
   getCurrentDataset,
@@ -82,6 +88,8 @@ api.get('/meta', requireAuth, (req, res) => {
     types: TYPES,
     testNatures: TEST_NATURES,
     testLevels: TEST_LEVELS,
+    layers: LAYERS,
+    httpMethods: HTTP_METHODS,
     areas: listAreas(),
     categoriesByArea: listCategoriesByArea(),
     sprints: listSprints(),

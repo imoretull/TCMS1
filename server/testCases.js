@@ -3,9 +3,12 @@ import {
   TYPES,
   TEST_NATURES,
   TEST_LEVELS,
+  LAYERS,
+  HTTP_METHODS,
   DEFAULT_TYPE,
   DEFAULT_TEST_NATURE,
   DEFAULT_TEST_LEVEL,
+  DEFAULT_LAYER,
 } from './constants.js';
 
 /** Error thrown when an update is rejected because the record changed. */
@@ -41,6 +44,11 @@ function rowToApi(row) {
     type: row.type,
     testNature: row.test_nature,
     testLevel: row.test_level,
+    layer: row.layer,
+    endpoint: row.endpoint,
+    httpMethod: row.http_method,
+    requestBody: row.request_body,
+    expectedStatus: row.expected_status,
     preconditions: row.preconditions,
     testData: row.test_data,
     testSteps: row.test_steps,
@@ -87,6 +95,25 @@ function ensureCategory(area, category) {
   return trimmedCat;
 }
 
+/**
+ * Resolve the API-only fields for a given layer. For a UI test these are forced
+ * blank so a case never carries stale API details; for an API test we take the
+ * provided values (defaulting to '').
+ */
+function apiFieldsFor(layer, input, existing = {}) {
+  if (layer !== 'API') {
+    return { endpoint: '', http_method: '', request_body: '', expected_status: '' };
+  }
+  const pick = (k, col) =>
+    input[k] !== undefined ? input[k] || '' : existing[col] ?? '';
+  return {
+    endpoint: pick('endpoint', 'endpoint'),
+    http_method: pick('httpMethod', 'http_method'),
+    request_body: pick('requestBody', 'request_body'),
+    expected_status: pick('expectedStatus', 'expected_status'),
+  };
+}
+
 /** Register an optional sprint tag so the filter can offer known values. */
 function ensureSprint(sprint) {
   const trimmed = (sprint || '').trim();
@@ -95,7 +122,7 @@ function ensureSprint(sprint) {
   return trimmed;
 }
 
-function validateEnums({ type, testNature, testLevel }) {
+function validateEnums({ type, testNature, testLevel, layer, httpMethod }) {
   if (type && !TYPES.includes(type)) {
     throw new ValidationError(`Invalid execution type: ${type}`);
   }
@@ -104,6 +131,15 @@ function validateEnums({ type, testNature, testLevel }) {
   }
   if (testLevel && !TEST_LEVELS.includes(testLevel)) {
     throw new ValidationError(`Invalid test level: ${testLevel}`);
+  }
+  // Layer is required to be exactly one of UI/API. We accept undefined here
+  // (create applies the default; update leaves it unchanged) but reject any
+  // explicit value that isn't a known layer — including empty string.
+  if (layer !== undefined && !LAYERS.includes(layer)) {
+    throw new ValidationError(`Layer must be one of ${LAYERS.join(' or ')}.`);
+  }
+  if (httpMethod && !HTTP_METHODS.includes(httpMethod)) {
+    throw new ValidationError(`Invalid HTTP method: ${httpMethod}`);
   }
 }
 
@@ -133,17 +169,21 @@ export function createTestCase(input, user) {
   const area = ensureArea(input.area);
   const category = ensureCategory(area, input.category);
   const sprint = ensureSprint(input.sprint);
+  const layer = input.layer || DEFAULT_LAYER;
+  const api = apiFieldsFor(layer, input);
   const tcId = nextTcId();
 
   const info = db
     .prepare(
       `INSERT INTO test_cases (
         tc_id, title, area, category, type, test_nature, test_level,
+        layer, endpoint, http_method, request_body, expected_status,
         preconditions, test_data, test_steps, expected_result, comments, pinned,
         is_new_functionality, sprint,
         created_at, created_by, updated_at, updated_by
       ) VALUES (
         @tc_id, @title, @area, @category, @type, @test_nature, @test_level,
+        @layer, @endpoint, @http_method, @request_body, @expected_status,
         @preconditions, @test_data, @test_steps, @expected_result, @comments, @pinned,
         @is_new_functionality, @sprint,
         @created_at, @created_by, @updated_at, @updated_by
@@ -157,6 +197,8 @@ export function createTestCase(input, user) {
       type: input.type || DEFAULT_TYPE,
       test_nature: input.testNature || DEFAULT_TEST_NATURE,
       test_level: input.testLevel || DEFAULT_TEST_LEVEL,
+      layer,
+      ...api,
       is_new_functionality: input.isNewFunctionality ? 1 : 0,
       sprint,
       preconditions: input.preconditions || '',
@@ -208,6 +250,10 @@ export function updateTestCase(id, input, user) {
   } else {
     category = existing.category;
   }
+  // Resolve layer + API fields. If the layer flips to UI, API fields are
+  // cleared; if API, take provided values (or keep existing).
+  const layer = input.layer ?? existing.layer;
+  const api = apiFieldsFor(layer, input, existing);
   const now = nowIso();
 
   // Coalesce: only overwrite fields the caller actually provided.
@@ -218,6 +264,8 @@ export function updateTestCase(id, input, user) {
     type: input.type ?? existing.type,
     test_nature: input.testNature ?? existing.test_nature,
     test_level: input.testLevel ?? existing.test_level,
+    layer,
+    ...api,
     preconditions: input.preconditions ?? existing.preconditions,
     test_data: input.testData ?? existing.test_data,
     test_steps: input.testSteps ?? existing.test_steps,
@@ -244,6 +292,8 @@ export function updateTestCase(id, input, user) {
     `UPDATE test_cases SET
       title = @title, area = @area, category = @category,
       type = @type, test_nature = @test_nature, test_level = @test_level,
+      layer = @layer, endpoint = @endpoint, http_method = @http_method,
+      request_body = @request_body, expected_status = @expected_status,
       preconditions = @preconditions, test_data = @test_data,
       test_steps = @test_steps, expected_result = @expected_result,
       comments = @comments, pinned = @pinned,
@@ -292,6 +342,11 @@ export function duplicateTestCase(id, user) {
       type: src.type,
       testNature: src.testNature,
       testLevel: src.testLevel,
+      layer: src.layer,
+      endpoint: src.endpoint,
+      httpMethod: src.httpMethod,
+      requestBody: src.requestBody,
+      expectedStatus: src.expectedStatus,
       preconditions: src.preconditions,
       testData: src.testData,
       testSteps: src.testSteps,
@@ -312,8 +367,8 @@ export function duplicateTestCase(id, user) {
  * BYPASS per-row optimistic locking (see db/SCHEMA.md §4). Runs in one
  * transaction. Returns { updated }.
  *
- * Allowed patch fields: type (Execution), testNature, testLevel, area,
- * category, sprint.
+ * Allowed patch fields: type (Execution), testNature, testLevel, layer, area,
+ * category, sprint. Bulk-setting layer to UI also clears the API-only fields.
  */
 export function bulkUpdateTestCases(ids, patch, user) {
   if (!Array.isArray(ids) || ids.length === 0) {
@@ -336,6 +391,23 @@ export function bulkUpdateTestCases(ids, patch, user) {
   if (patch.testLevel !== undefined) {
     sets.push('test_level = @test_level');
     params.test_level = patch.testLevel;
+  }
+  if (patch.layer !== undefined) {
+    sets.push('layer = @layer');
+    params.layer = patch.layer;
+    // Switching a batch to UI clears API-only fields for consistency.
+    if (patch.layer === 'UI') {
+      sets.push(
+        'endpoint = @endpoint',
+        'http_method = @http_method',
+        'request_body = @request_body',
+        'expected_status = @expected_status'
+      );
+      params.endpoint = '';
+      params.http_method = '';
+      params.request_body = '';
+      params.expected_status = '';
+    }
   }
   if (patch.area !== undefined) {
     const area = ensureArea(patch.area);

@@ -63,6 +63,15 @@ export default function Toolbar({
           ))}
         </select>
 
+        <select value={filters.layer} onChange={set('layer')} className="filter">
+          <option value="">UI &amp; API</option>
+          {meta?.layers?.map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
+        </select>
+
         <select value={filters.testLevel} onChange={set('testLevel')} className="filter">
           <option value="">All types</option>
           {meta?.testLevels?.map((l) => (

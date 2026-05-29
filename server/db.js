@@ -163,6 +163,12 @@ function migrateColumns(db) {
       'test_level',
       `ALTER TABLE test_cases ADD COLUMN test_level TEXT NOT NULL DEFAULT 'Regression'`,
     ],
+    // v5: interface layer (UI/API) + API-only detail fields.
+    ['layer', `ALTER TABLE test_cases ADD COLUMN layer TEXT NOT NULL DEFAULT 'UI'`],
+    ['endpoint', `ALTER TABLE test_cases ADD COLUMN endpoint TEXT DEFAULT ''`],
+    ['http_method', `ALTER TABLE test_cases ADD COLUMN http_method TEXT DEFAULT ''`],
+    ['request_body', `ALTER TABLE test_cases ADD COLUMN request_body TEXT DEFAULT ''`],
+    ['expected_status', `ALTER TABLE test_cases ADD COLUMN expected_status TEXT DEFAULT ''`],
   ];
   for (const [name, sql] of additions) {
     if (!cols.has(name)) db.exec(sql);

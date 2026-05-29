@@ -1,6 +1,6 @@
 # TCMS Database Contract
 
-**Schema version: 4**
+**Schema version: 5**
 
 This document is the **contract** for the TCMS database. The TCMS web app is the
 *reference implementation* of these rules, but the database file is standalone:
@@ -80,10 +80,27 @@ update this contract (and bump the schema version if other apps must know).
 | `test_cases.type`        | `Manual`, `Automated`                     | `Manual`     | Execution |
 | `test_cases.test_level`  | `Sanity`, `Smoke`, `Regression`           | `Regression` | Type      |
 | `test_cases.test_nature` | `Positive`, `Negative`                    | `Positive`   | Nature    |
+| `test_cases.layer`       | `UI`, `API`                               | `UI`         | Layer     |
 | `test_cases.pinned`      | `0` (false) or `1` (true)                 | `0`          | —         |
 | `test_cases.is_new_functionality` | `0` (false) or `1` (true)        | `0`          | New       |
 
 `title` must be a non-empty (non-whitespace) string.
+
+**`layer`** is **required**: every case is exactly **one** of `UI` or `API` —
+never both, never empty. It selects which detail fields apply:
+
+- **`UI`** tests use the free-text `test_steps` (and `expected_result`). The
+  API-only columns below should be blank.
+- **`API`** tests use the API-only columns and should leave `test_steps` blank:
+  - `endpoint` — e.g. `/api/cart/items`
+  - `http_method` — one of `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
+  - `request_body` — request payload (free text / JSON)
+  - `expected_status` — e.g. `200`, `201`, `422`
+  - `expected_result` is reused as the **expected response** for API tests.
+
+A compliant writer should **clear the API columns when `layer = 'UI'`** so a
+case never carries stale cross-layer data (the reference app does this
+automatically on create, update, and bulk-update-to-UI).
 
 > **UI vs. column names:** the field stored as `type` (Manual/Automated) is
 > shown in the UI as **"Execution"**, and the field stored as `test_level`
@@ -168,8 +185,8 @@ A compliant `INSERT` must:
    `INSERT OR IGNORE INTO categories (area, name) VALUES (?, ?)`. (Only register
    a category when an area is present — a category without an area is invalid.)
 6. Apply defaults (§2) for any omitted enum/`pinned` fields (`type`→`Manual`,
-   `test_level`→`Regression`, `test_nature`→`Positive`,
-   `is_new_functionality`→`0`).
+   `test_level`→`Regression`, `test_nature`→`Positive`, `layer`→`UI`,
+   `is_new_functionality`→`0`). If `layer = 'UI'`, force the API columns blank.
 7. If `sprint` is non-empty, register it:
    `INSERT OR IGNORE INTO sprints (name) VALUES (?)`.
 
@@ -276,7 +293,7 @@ A plain `DELETE FROM test_cases WHERE id = ?`. No soft-delete in v1.
 
 ## 8. Versioning
 
-`schema_meta.schema_version` is currently **`4`**. Before reading/writing, an
+`schema_meta.schema_version` is currently **`5`**. Before reading/writing, an
 app may check it:
 
 ```sql
@@ -288,6 +305,11 @@ would break apps written against an older version.
 
 ### Changelog
 
+- **v5** — Added the required `layer` column (`UI`/`API`, exactly one) plus
+  API-only fields `endpoint`, `http_method`, `request_body`, `expected_status`.
+  UI tests use `test_steps`; API tests use the API fields (and reuse
+  `expected_result` as the expected response). All new columns are
+  nullable/defaulted; the reference app auto-migrates an older file on startup.
 - **v4** — Made `test_cases` a pure repository: **removed** the execution
   columns `status`, `priority`, and `assignee_email` (these move to a future
   Test Runs feature). **Added** `test_level` (`Sanity`/`Smoke`/`Regression`,

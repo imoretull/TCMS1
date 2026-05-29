@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react';
-import { TypeBadge, NatureBadge, LevelBadge } from './badges.jsx';
+import { TypeBadge, NatureBadge, LevelBadge, LayerBadge } from './badges.jsx';
 
 const BLANK = {
   title: '',
   area: '',
   category: '',
+  layer: 'UI',
   type: 'Manual', // Execution
   testNature: 'Positive',
   testLevel: 'Regression',
+  // API-only fields:
+  endpoint: '',
+  httpMethod: 'GET',
+  requestBody: '',
+  expectedStatus: '',
   preconditions: '',
   testData: '',
   testSteps: '',
@@ -80,9 +86,14 @@ export default function TestCasePanel({
       title: form.title,
       area: form.area,
       category: form.category,
+      layer: form.layer,
       type: form.type,
       testNature: form.testNature,
       testLevel: form.testLevel,
+      endpoint: form.endpoint,
+      httpMethod: form.httpMethod,
+      requestBody: form.requestBody,
+      expectedStatus: form.expectedStatus,
       preconditions: form.preconditions,
       testData: form.testData,
       testSteps: form.testSteps,
@@ -234,6 +245,7 @@ function ViewBody({ testCase, meta }) {
         <Meta label="Category">
           {t.category ? <span className="category-tag plain">{t.category}</span> : '—'}
         </Meta>
+        <Meta label="Layer"><LayerBadge layer={t.layer} /></Meta>
         <Meta label="Type"><LevelBadge level={t.testLevel} /></Meta>
         <Meta label="Execution"><TypeBadge type={t.type} /></Meta>
         <Meta label="Nature"><NatureBadge nature={t.testNature} /></Meta>
@@ -252,8 +264,32 @@ function ViewBody({ testCase, meta }) {
 
       <Section title="Preconditions" text={t.preconditions} />
       <Section title="Test Data" text={t.testData} />
-      <Section title="Test Steps" text={t.testSteps} />
-      <Section title="Expected Result" text={t.expectedResult} />
+
+      {t.layer === 'API' ? (
+        <>
+          <div className="meta-grid api-grid">
+            <Meta label="Endpoint">
+              {t.endpoint ? <code className="mono">{t.endpoint}</code> : '—'}
+            </Meta>
+            <Meta label="Method">
+              {t.httpMethod ? (
+                <span className="method-tag">{t.httpMethod}</span>
+              ) : (
+                '—'
+              )}
+            </Meta>
+            <Meta label="Expected status">{t.expectedStatus || '—'}</Meta>
+          </div>
+          <Section title="Request Body" text={t.requestBody} />
+          <Section title="Expected Response" text={t.expectedResult} />
+        </>
+      ) : (
+        <>
+          <Section title="Test Steps" text={t.testSteps} />
+          <Section title="Expected Result" text={t.expectedResult} />
+        </>
+      )}
+
       <Section title="Comments" text={t.comments} />
 
       <div className="audit">
@@ -420,6 +456,17 @@ function EditForm({
 
       <div className="field-row">
         <label className="field">
+          <span>Layer *</span>
+          <select value={form.layer} onChange={set('layer')}>
+            {meta?.layers?.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="field">
           <span>Type</span>
           <select value={form.testLevel} onChange={set('testLevel')}>
             {meta?.testLevels?.map((l) => (
@@ -429,7 +476,9 @@ function EditForm({
             ))}
           </select>
         </label>
+      </div>
 
+      <div className="field-row">
         <label className="field">
           <span>Execution</span>
           <select value={form.type} onChange={set('type')}>
@@ -487,14 +536,66 @@ function EditForm({
 
       <TextArea label="Preconditions" value={form.preconditions} onChange={set('preconditions')} />
       <TextArea label="Test Data" value={form.testData} onChange={set('testData')} />
-      <TextArea
-        label="Test Steps"
-        value={form.testSteps}
-        onChange={set('testSteps')}
-        rows={5}
-        placeholder={'1. …\n2. …\n3. …'}
-      />
-      <TextArea label="Expected Result" value={form.expectedResult} onChange={set('expectedResult')} />
+
+      {form.layer === 'API' ? (
+        <>
+          <div className="field-row">
+            <label className="field">
+              <span>Endpoint</span>
+              <input
+                type="text"
+                value={form.endpoint || ''}
+                onChange={set('endpoint')}
+                placeholder="/api/cart/items"
+              />
+            </label>
+            <label className="field method-field">
+              <span>Method</span>
+              <select value={form.httpMethod} onChange={set('httpMethod')}>
+                {meta?.httpMethods?.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field status-field">
+              <span>Expected status</span>
+              <input
+                type="text"
+                value={form.expectedStatus || ''}
+                onChange={set('expectedStatus')}
+                placeholder="200"
+              />
+            </label>
+          </div>
+          <TextArea
+            label="Request Body"
+            value={form.requestBody}
+            onChange={set('requestBody')}
+            rows={5}
+            placeholder={'{\n  "key": "value"\n}'}
+          />
+          <TextArea
+            label="Expected Response"
+            value={form.expectedResult}
+            onChange={set('expectedResult')}
+            rows={4}
+          />
+        </>
+      ) : (
+        <>
+          <TextArea
+            label="Test Steps"
+            value={form.testSteps}
+            onChange={set('testSteps')}
+            rows={5}
+            placeholder={'1. …\n2. …\n3. …'}
+          />
+          <TextArea label="Expected Result" value={form.expectedResult} onChange={set('expectedResult')} />
+        </>
+      )}
+
       <TextArea label="Comments" value={form.comments} onChange={set('comments')} />
     </div>
   );

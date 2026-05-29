@@ -348,6 +348,9 @@ body {
 .col-category {
   width: 130px;
 }
+.col-layer {
+  width: 70px;
+}
 .col-level {
   width: 110px;
 }
@@ -508,6 +511,37 @@ body {
 .level-badge[data-level='Regression'] {
   background: #f3e8fd;
   color: #7e22ce;
+}
+
+/* Interface layer (UI / API). */
+.layer-badge[data-layer='UI'] {
+  background: #eef1f4;
+  color: #475569;
+}
+.layer-badge[data-layer='API'] {
+  background: #e8f5e9;
+  color: #1b5e20;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* HTTP method chip in the API detail view. */
+.method-tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  background: #1f2933;
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.api-grid {
+  grid-template-columns: 2fr 1fr 1fr;
+}
+.method-field,
+.status-field {
+  flex: 0 0 130px;
 }
 
 /* ── Login ────────────────────────────────────────────────────────────────*/

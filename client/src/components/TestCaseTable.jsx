@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { TypeBadge, NatureBadge, LevelBadge } from './badges.jsx';
+import { TypeBadge, NatureBadge, LevelBadge, LayerBadge } from './badges.jsx';
 
 // Test levels nest: Sanity ⊆ Smoke ⊆ Regression. Rank by breadth so that
 // filtering inclusively (a case matches if its level is at or below the
@@ -14,6 +14,7 @@ function applyFilters(testCases, filters) {
   return testCases.filter((t) => {
     if (filters.area && t.area !== filters.area) return false;
     if (filters.category && t.category !== filters.category) return false;
+    if (filters.layer && t.layer !== filters.layer) return false;
     if (filters.type && t.type !== filters.type) return false;
     if (filters.testNature && t.testNature !== filters.testNature) return false;
     // Inclusive test-level filter: a case shows if its level is at or below the
@@ -159,6 +160,7 @@ export default function TestCaseTable({
             <SortHeader label="Title" sortKey="title" sort={sort} setSort={setSort} className="col-title" />
             <SortHeader label="Area" sortKey="area" sort={sort} setSort={setSort} className="col-area" />
             <SortHeader label="Category" sortKey="category" sort={sort} setSort={setSort} className="col-category" />
+            <SortHeader label="Layer" sortKey="layer" sort={sort} setSort={setSort} className="col-layer" />
             <SortHeader label="Type" sortKey="testLevel" sort={sort} setSort={setSort} className="col-level" />
             <SortHeader label="Execution" sortKey="type" sort={sort} setSort={setSort} className="col-type" />
             <SortHeader label="Nature" sortKey="testNature" sort={sort} setSort={setSort} className="col-nature" />
@@ -211,6 +213,9 @@ export default function TestCaseTable({
                 ) : (
                   '—'
                 )}
+              </td>
+              <td className="col-layer">
+                <LayerBadge layer={t.layer} />
               </td>
               <td className="col-level">
                 <LevelBadge level={t.testLevel} />

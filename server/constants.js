@@ -29,6 +29,13 @@ export function levelsAtOrBelow(level) {
   return TEST_LEVELS.slice(0, idx + 1);
 }
 
+// Interface under test (UI label: "Layer"). Every case is exactly one of these.
+export const LAYERS = ['UI', 'API'];
+
+// HTTP methods offered for API tests.
+export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
 export const DEFAULT_TYPE = 'Manual';
 export const DEFAULT_TEST_NATURE = 'Positive';
 export const DEFAULT_TEST_LEVEL = 'Regression';
+export const DEFAULT_LAYER = 'UI';

@@ -38,3 +38,13 @@ export function LevelBadge({ level }) {
     </span>
   );
 }
+
+// Interface under test (UI / API). UI label is "Layer".
+export function LayerBadge({ layer }) {
+  if (!layer) return null;
+  return (
+    <span className="badge layer-badge" data-layer={layer}>
+      {layer}
+    </span>
+  );
+}

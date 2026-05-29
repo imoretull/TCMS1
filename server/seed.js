@@ -119,7 +119,13 @@ const levelList = db
   .all()
   .map((r) => `${r.test_level}:${r.n}`)
   .join(', ');
+const layerList = db
+  .prepare(`SELECT layer, COUNT(*) n FROM test_cases GROUP BY layer ORDER BY layer`)
+  .all()
+  .map((r) => `${r.layer}:${r.n}`)
+  .join(', ');
 console.log(`New-functionality cases: ${newCount}. Sprints: ${sprintList}.`);
+console.log(`Layers — ${layerList}.`);
 console.log(`Test levels — ${levelList}.`);
 console.log(`Users available for sign-in: ${users.length}`);
 process.exit(0);

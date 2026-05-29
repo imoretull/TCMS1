@@ -9,6 +9,9 @@ and a single-file database.
 > file) · **Email + PIN** auth. One language (JavaScript) front-to-back; runs on
 > macOS and Windows with minimal setup.
 
+> 🚀 **New to this / setting up on a fresh Mac or Windows machine?** Follow the
+> step-by-step **[ONBOARDING.md](ONBOARDING.md)** (installs Node, clones, runs).
+
 ---
 
 ## Features
@@ -17,9 +20,12 @@ and a single-file database.
 - **Test-case repository** (TestRail-style): stores what a test *is*, not
   execution results. Pass/fail status, assignee, and run-time priority are
   intentionally **not** here — they belong to a future **Test Runs** feature.
-- **Search, filter, and sort** by TC ID, title, area, category, type
-  (Sanity/Smoke/Regression — nested, inclusive), execution (manual/automated),
-  test nature (positive/negative), and sprint.
+- **UI vs API tests** — every case is exactly one **Layer** (UI or API). API
+  tests get dedicated fields (endpoint, HTTP method, request body, expected
+  status/response) in place of UI test steps; the detail panel adapts.
+- **Search, filter, and sort** by TC ID, title, area, category, layer (UI/API),
+  type (Sanity/Smoke/Regression — nested, inclusive), execution
+  (manual/automated), test nature (positive/negative), and sprint.
 - **Area → Category hierarchy** — group cases by a broad area (e.g. Checkout)
   and a sub-category within it (e.g. Discount). Both are user-managed: add a new
   area or category on the fly while editing; category choices are scoped to the

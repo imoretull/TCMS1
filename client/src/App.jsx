@@ -12,6 +12,7 @@ const EMPTY_FILTERS = {
   search: '',
   area: '',
   category: '',
+  layer: '', // UI/API
   type: '', // Execution: Manual/Automated
   testNature: '',
   testLevel: '', // Sanity/Smoke/Regression (inclusive)
