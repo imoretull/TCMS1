@@ -128,6 +128,35 @@ dev server on port **5173** (which proxies `/api` to the backend). Open
 
 ---
 
+## Standalone, plug-and-play database
+
+The database is **separated from the application logic** so that *another
+application — in any language, on any machine — can use the same data*:
+
+- The **structure** is a single canonical file, [`db/schema.sql`](db/schema.sql),
+  which is the one source of truth (the app loads it on startup). Any tool can
+  create a fresh, compatible database from it with no dependency on this app:
+  ```bash
+  sqlite3 tcms.db < db/schema.sql
+  ```
+- The **rules** (TC-ID generation, `updated_at` stamping, optimistic
+  edit-locking, enum validation, area auto-creation) intentionally live in the
+  application layer, **not** in the database — the DB is a passive, portable
+  store. Every application that writes to the file must follow the documented
+  contract in **[`db/SCHEMA.md`](db/SCHEMA.md)** so the data stays consistent no
+  matter which app produced it.
+- `schema_meta.schema_version` lets another app check compatibility before
+  reading/writing.
+
+> **Portability boundary:** SQLite is a local file, not a network server. To
+> share data with an app on another laptop, hand over a *copy* of the file (or
+> use a shared host). Multiple machines writing one live SQLite file over a
+> network share is not supported — for that, migrate to PostgreSQL using
+> [`db/SCHEMA.md`](db/SCHEMA.md) as the schema/rules reference. See §7 of that
+> document.
+
+---
+
 ## Project layout
 
 ```
@@ -135,10 +164,13 @@ dev server on port **5173** (which proxies `/api` to the backend). Open
 ├── .env                # configuration (port, db path, users + PINs)
 ├── .env.example        # documented template
 ├── package.json        # root scripts: setup / build / seed / start / dev
+├── db/
+│   ├── schema.sql      # canonical DB structure (single source of truth)
+│   └── SCHEMA.md       # the data contract every writer must follow
 ├── server/
 │   ├── index.js        # Express app + routes
 │   ├── config.js       # env parsing (incl. TCMS_USERS)
-│   ├── db.js           # SQLite connection, schema, user sync
+│   ├── db.js           # SQLite connection; applies db/schema.sql; user sync
 │   ├── auth.js         # email+PIN verification, sessions, middleware
 │   ├── testCases.js    # CRUD + optimistic locking (the data model)
 │   ├── constants.js    # status/priority/type enums
